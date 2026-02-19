@@ -1,0 +1,98 @@
+{
+    "info": {
+        "name": "AIRA Healthcare API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Auth: Login (Get Token)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "var jsonData = pm.response.json();",
+                            "var token = null;",
+                            "",
+                            "// 1. Try body",
+                            "if (jsonData.success && jsonData.token && jsonData.token.access_token) {",
+                            "    token = jsonData.token.access_token;",
+                            "    console.log(\"Token found in body\");",
+                            "}",
+                            "// 2. Try cookies",
+                            "else if (pm.cookies.has(\"aira_access_token\")) {",
+                            "    token = pm.cookies.get(\"aira_access_token\");",
+                            "    console.log(\"Token found in cookies\");",
+                            "}",
+                            "",
+                            "if (token) {",
+                            "    pm.collectionVariables.set(\"access_token\", token);",
+                            "    console.log(\"Token set successfully to collection variables\");",
+                            "} else {",
+                            "    console.error(\"Token not found!\");",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"staff_id\": \"nurse_001\",\n    \"password\": \"Nurse@2024!\"\n}"
+                },
+                "url": "http://localhost:8000/api/auth/login"
+            }
+        },
+        {
+            "name": "OCR: Upload Prescription",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "encounter_id",
+                            "type": "text",
+                            "value": "ENC-TEST-001"
+                        },
+                        {
+                            "key": "patient_id",
+                            "type": "text",
+                            "value": "PT-TEST-001"
+                        },
+                        {
+                            "key": "language_hint",
+                            "type": "text",
+                            "value": "en"
+                        },
+                        {
+                            "key": "captured_by",
+                            "type": "text",
+                            "value": "nurse_001"
+                        },
+                        {
+                            "key": "image",
+                            "type": "file",
+                            "src": "tests/data/english_rx.jpg"
+                        }
+                    ]
+                },
+                "url": "http://localhost:8000/api/nurse/ocr"
+            }
+        }
+    ]
+}

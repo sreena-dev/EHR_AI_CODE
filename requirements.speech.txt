@@ -1,0 +1,14 @@
+# Speech transcription
+faster-whisper>=1.0.0
+soundfile>=0.12.0
+
+# Speaker diarization (optional but recommended)
+pyannote.audio>=3.1.0
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Clinical note generation
+ollama>=0.1.0  # Requires Ollama running locally: https://ollama.com
+
+# Safety guard
+# (Uses same Ollama instance - no additional deps)
