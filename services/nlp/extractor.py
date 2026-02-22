@@ -1,9 +1,16 @@
+import os
 import torch
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import logging
 import time
+from pathlib import Path
+
+# Set HuggingFace cache directory (prevents re-download on server reload)
+_HF_CACHE_DIR = str(Path(__file__).resolve().parent.parent.parent / ".model_cache" / "huggingface")
+os.environ.setdefault("HF_HOME", _HF_CACHE_DIR)
+os.environ.setdefault("TRANSFORMERS_CACHE", _HF_CACHE_DIR)
 
 from .models import (
     NLPEngineResult,
@@ -183,14 +190,27 @@ class ClinicalNLPExtractor:
             logger.info(f"Loading model: {config.name} on {config.device}")
 
             try:
-                # Load tokenizer
-                tokenizer = AutoTokenizer.from_pretrained(
-                    config.tokenizer_path or config.model_path
-                )
+                # Load tokenizer (try local cache first, then download)
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained(
+                        config.tokenizer_path or config.model_path,
+                        local_files_only=True
+                    )
+                except OSError:
+                    logger.info(f"Downloading tokenizer for {config.name} (first time only)...")
+                    tokenizer = AutoTokenizer.from_pretrained(
+                        config.tokenizer_path or config.model_path
+                    )
                 self._tokenizers[model_key] = tokenizer
 
-                # Load model
-                model = AutoModelForTokenClassification.from_pretrained(config.model_path)
+                # Load model (try local cache first, then download)
+                try:
+                    model = AutoModelForTokenClassification.from_pretrained(
+                        config.model_path, local_files_only=True
+                    )
+                except OSError:
+                    logger.info(f"Downloading model {config.name} (first time only)...")
+                    model = AutoModelForTokenClassification.from_pretrained(config.model_path)
 
                 # Move to device
                 if config.device == "cuda" and torch.cuda.is_available():

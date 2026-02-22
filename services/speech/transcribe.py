@@ -3,10 +3,30 @@ Multilingual clinical speech transcription with Tamil support.
 Uses Faster-Whisper (CPU-friendly, offline, 100% free).
 """
 import logging
+import os
 from pathlib import Path
 from typing import Union, Optional, Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
+import sys
+
+# Windows DLL path hack for ctranslate2/faster-whisper
+# Prevents WinError 3 when ROCm/CUDA directories are missing in site-packages
+if sys.platform == "win32":
+    import os
+    _original_add_dll_directory = os.add_dll_directory
+    def _patched_add_dll_directory(path):
+        if not os.path.exists(path):
+            return None
+        return _original_add_dll_directory(path)
+    os.add_dll_directory = _patched_add_dll_directory
+
+# Set cache directory for models (prevents re-download on server reload)
+_MODEL_CACHE_DIR = Path(os.environ.get(
+    "WHISPER_CACHE_DIR",
+    str(Path(__file__).resolve().parent.parent.parent / ".model_cache" / "whisper")
+))
+_MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 from faster_whisper import WhisperModel
 from .models import (
@@ -63,7 +83,8 @@ class ClinicalTranscriber:
                 model_size,
                 device=device,
                 compute_type=compute_type,
-                cpu_threads=4  # Optimize for multi-core CPUs
+                cpu_threads=4,  # Optimize for multi-core CPUs
+                download_root=str(_MODEL_CACHE_DIR)  # Persist across reloads
             )
             logger.info(f"✓ Whisper model loaded successfully")
         except Exception as e:
@@ -98,7 +119,7 @@ class ClinicalTranscriber:
         Raises:
             LowConfidenceError: For Tamil/low-confidence transcriptions requiring review
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         audio_path = Path(audio_path)
         
         if not audio_path.exists():
@@ -116,12 +137,14 @@ class ClinicalTranscriber:
             duration_sec = 0
         
         try:
-            # Run transcription with language hint if provided
+            # Run transcription with English as default and translate task enabled
+            # to handle multilingual input (e.g., Tamil) into English text.
             segments, info = self.model.transcribe(
                 str(audio_path),
-                language=language_hint,
+                language=language_hint or "en",
+                task="translate", # Always translate to English as requested
                 beam_size=5,
-                vad_filter=True,  # Voice activity detection (critical for clinic noise)
+                vad_filter=False, # Disable filter to prevent EMPTY_TRANSCRIPTION if VAD is too aggressive
                 temperature=0.0   # Deterministic output for clinical safety
             )
             
@@ -222,6 +245,8 @@ class ClinicalTranscriber:
             
             return result
             
+        except TranscriptionError:
+            raise
         except Exception as e:
             logger.exception(f"Transcription failed for {encounter_id}: {str(e)}")
             raise TranscriptionError(f"Transcription failed: {str(e)}", encounter_id=encounter_id)

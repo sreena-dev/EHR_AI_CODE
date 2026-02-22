@@ -53,11 +53,12 @@ async def transcribe_consultation_audio(
     ALLOWED_AUDIO_TYPES = [
         "audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave",  # WAV variants
         "audio/mpeg", "audio/mp3",  # MP3 variants
+        "audio/webm", "audio/ogg",  # Browser recording defaults
     ]
     if audio.content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only WAV/MP3 audio supported"
+            detail=f"Unsupported media type: {audio.content_type}. Only WAV, MP3, WEBM, OGG supported."
         )
     
     # Save to temp file
@@ -103,10 +104,25 @@ async def transcribe_consultation_audio(
                 "status": "low_confidence",
                 "encounter_id": encounter_id,
                 "message": str(e),
-                "safety_flags": e.safety_flags,
+                "safety_flags": getattr(e, 'safety_flags', ["LOW_CONFIDENCE"]),
                 "requires_verification": True,
                 "workflow_state": workflow.current_state.name
             }, status_code=202)  # 202 Accepted (processing continues with human review)
+        except TranscriptionError as e:
+            # Structural transcription failure
+            logger.error(f"TranscriptionError for {encounter_id}: {e}")
+            return JSONResponse({
+                "status": "error",
+                "encounter_id": encounter_id,
+                "message": f"Transcription failed: {str(e)}"
+            }, status_code=500)
+        except Exception as e:
+            # Unexpected system crash
+            logger.exception(f"Unhandled error in transcription: {e}")
+            return JSONResponse({
+                "status": "error",
+                "message": "A system error occurred during transcription processing"
+            }, status_code=500)
             
     finally:
         # Cleanup

@@ -26,21 +26,31 @@ class ClinicalNoteGenerator:
         self._client = None  # Lazy-loaded Ollama client
     
     def _get_ollama_client(self):
-        """Lazy load Ollama client"""
+        """Lazy load Ollama client (does NOT auto-download models)"""
         if self._client is None:
             try:
                 from ollama import Client
                 self._client = Client(host='http://localhost:11434')
-                # Verify model exists
+                # Verify model exists — but do NOT auto-pull (avoids slow download on every reload)
                 models = self._client.list()
-                if not any(m['name'] == self.model_name for m in models['models']):
-                    logger.warning(f"Model '{self.model_name}' not found - downloading...")
-                    self._client.pull(self.model_name)
+                model_names = [m.get('name', '') for m in models.get('models', [])]
+                if not any(self.model_name in name for name in model_names):
+                    logger.warning(
+                        f"Model '{self.model_name}' not found in Ollama. "
+                        f"Run 'ollama pull {self.model_name}' manually to download it once. "
+                        f"Available models: {model_names}"
+                    )
+                    # Do NOT call self._client.pull() — that blocks startup
+                else:
+                    logger.info(f"Ollama model '{self.model_name}' found and ready.")
             except Exception as e:
-                raise RuntimeError(
-                    f"Ollama not running or model unavailable: {e}. "
+                logger.warning(
+                    f"Ollama not running or unavailable: {e}. "
+                    "Clinical notes will use template fallback. "
                     "Install Ollama: https://ollama.com/download"
                 )
+                # Don't crash — fallback to template-based notes
+                self._client = None
         return self._client
     
     async def generate_note(
@@ -129,6 +139,9 @@ class ClinicalNoteGenerator:
         """Generate draft note using Meditron"""
         try:
             client = self._get_ollama_client()
+            if client is None:
+                logger.info("Ollama unavailable — using template fallback for clinical note")
+                return self._fallback_template_note(context)
             
             prompt = f"""
 You are an expert clinical documentation assistant. Generate a professional clinical note using ONLY the facts provided in the context below.

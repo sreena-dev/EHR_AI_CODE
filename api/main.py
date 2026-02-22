@@ -1,3 +1,4 @@
+# Reload trigger: 2026-02-22T09:50:00
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,7 @@ from .middleware.auth import auth_router
 from .routes.doctor_consult import router as doctor_router
 from core.workflow import WorkflowError
 import logging
-import datetime
+from datetime import datetime, timezone
 
 # Configure production logging
 logging.basicConfig(
@@ -63,7 +64,7 @@ def create_app() -> FastAPI:
     # CORS (restrict to clinic tablet IPs in production)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://clinic-tablet.local"],  # LOCK DOWN IN PROD
+        allow_origins=["http://localhost:3000", "http://localhost:5173", "http://clinic-tablet.local"],  # LOCK DOWN IN PROD
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -77,7 +78,7 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Lightweight health check for load balancers"""
-        return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+        return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
     return app
 
