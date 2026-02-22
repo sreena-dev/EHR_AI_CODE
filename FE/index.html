@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,12 +8,34 @@
   <title>AIRA Clinical Workflow</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles/main.css" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#2563EB",
+            "primary-light": "#60a5fa",
+            "background-light": "#f8fafc",
+            "sidebar-light": "#ffffff",
+          },
+          fontFamily: {
+            "display": ["Inter", "sans-serif"]
+          }
+        },
+      },
+    }
+  </script>
 </head>
+
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>

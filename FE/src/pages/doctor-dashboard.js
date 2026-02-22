@@ -137,7 +137,7 @@ export async function renderDoctorDashboard() {
   };
 
   document.getElementById('card-appointments')?.addEventListener('click', () => {
-    location.hash = '#/doctor/dashboard';
+    location.hash = '#/doctor/schedule';
   });
   document.getElementById('card-pending')?.addEventListener('click', () => filterTable('Pending'));
   document.getElementById('card-review')?.addEventListener('click', () => {

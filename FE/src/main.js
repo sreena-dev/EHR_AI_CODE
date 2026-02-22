@@ -33,6 +33,7 @@ import { renderLiveConsultation } from './pages/live-consultation.js';
 // Utility & settings pages
 import { renderDoctorProfile } from './pages/doctor-profile.js';
 import { renderScheduling } from './pages/scheduling.js';
+import { renderDoctorSchedule } from './pages/doctor-schedule.js';
 import { renderDraftsRecovery } from './pages/drafts-recovery.js';
 
 // Auth guard — redirect to login if not authenticated
@@ -77,6 +78,7 @@ route('/doctor/clarification', requireAuth(renderClarification));
 route('/doctor/emr-error', requireAuth(renderEMRError));
 route('/doctor/profile', requireAuth(renderDoctorProfile));
 route('/doctor/scheduling', requireAuth(renderScheduling));
+route('/doctor/schedule', requireAuth(renderDoctorSchedule));
 route('/doctor/drafts', requireAuth(renderDraftsRecovery));
 route('/doctor/case', requireAuth(renderClinicalCase));
 route('/doctor/emr-success', requireAuth(renderEMRSuccess));

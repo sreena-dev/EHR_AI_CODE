@@ -13,6 +13,7 @@ const NURSE_NAV = [
 
 const DOCTOR_NAV = [
   { icon: 'dashboard', label: 'Dashboard', path: '/doctor/dashboard' },
+  { icon: 'calendar_today', label: 'Schedule', path: '/doctor/schedule' },
   { icon: 'groups', label: 'Patient Queue', path: '/doctor/queue' },
   { icon: 'mic', label: 'Consultation', path: '/doctor/consultation' },
   { icon: 'video_call', label: 'Live Consultation', path: '/doctor/live-consultation' },
@@ -20,6 +21,7 @@ const DOCTOR_NAV = [
   { icon: 'verified', label: 'Note Verification', path: '/doctor/note-verification' },
   { icon: 'help_outline', label: 'Clarification', path: '/doctor/clarification' },
   { icon: 'drafts', label: 'Local Drafts', path: '/doctor/drafts' },
+  { icon: 'settings', label: 'Preferences', path: '/doctor/scheduling' },
   { icon: 'person', label: 'Profile', path: '/doctor/profile' },
 ];
 
