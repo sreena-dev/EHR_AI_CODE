@@ -8,9 +8,9 @@ import { transcribeAudio, generateNote, verifyNote } from '../api/doctor.js';
 import { showToast } from '../components/toast.js';
 
 export async function renderConsultation() {
-    const user = getCurrentUser();
+  const user = getCurrentUser();
 
-    const bodyHTML = `
+  const bodyHTML = `
     <div style="max-width:1000px;">
       <div style="margin-bottom:24px;">
         <h2>Consultation & AI Transcription</h2>
@@ -199,168 +199,169 @@ export async function renderConsultation() {
     </style>
   `;
 
-    renderAppShell('Consultation', bodyHTML, '/doctor/consultation');
+  const activePath = location.hash === '#/doctor/notes' ? '/doctor/notes' : '/doctor/consultation';
+  renderAppShell('Consultation', bodyHTML, activePath);
 
-    // Wire up interactions
-    let selectedAudio = null;
+  // Wire up interactions
+  let selectedAudio = null;
 
-    const audioUploadArea = document.getElementById('audio-upload-area');
-    const audioInput = document.getElementById('audio-input');
-    const transcribeBtn = document.getElementById('transcribe-btn');
+  const audioUploadArea = document.getElementById('audio-upload-area');
+  const audioInput = document.getElementById('audio-input');
+  const transcribeBtn = document.getElementById('transcribe-btn');
 
-    audioUploadArea.addEventListener('click', () => audioInput.click());
-    audioInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            selectedAudio = e.target.files[0];
-            const nameEl = document.getElementById('audio-file-name');
-            nameEl.textContent = `${selectedAudio.name} (${(selectedAudio.size / 1024).toFixed(0)} KB)`;
-            nameEl.style.display = 'block';
-            transcribeBtn.disabled = false;
-        }
-    });
+  audioUploadArea.addEventListener('click', () => audioInput.click());
+  audioInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      selectedAudio = e.target.files[0];
+      const nameEl = document.getElementById('audio-file-name');
+      nameEl.textContent = `${selectedAudio.name} (${(selectedAudio.size / 1024).toFixed(0)} KB)`;
+      nameEl.style.display = 'block';
+      transcribeBtn.disabled = false;
+    }
+  });
 
-    // Step 1: Transcribe
-    transcribeBtn.addEventListener('click', async () => {
-        if (!selectedAudio) return;
-        const encounterId = document.getElementById('consult-encounter').value.trim();
-        const patientId = document.getElementById('consult-patient').value.trim();
-        if (!encounterId || !patientId) {
-            showToast('Please fill in Encounter ID and Patient ID', 'warning');
-            return;
-        }
+  // Step 1: Transcribe
+  transcribeBtn.addEventListener('click', async () => {
+    if (!selectedAudio) return;
+    const encounterId = document.getElementById('consult-encounter').value.trim();
+    const patientId = document.getElementById('consult-patient').value.trim();
+    if (!encounterId || !patientId) {
+      showToast('Please fill in Encounter ID and Patient ID', 'warning');
+      return;
+    }
 
-        transcribeBtn.disabled = true;
-        document.getElementById('transcribe-text').textContent = 'Transcribing...';
-        document.getElementById('transcribe-spinner').style.display = 'inline-block';
+    transcribeBtn.disabled = true;
+    document.getElementById('transcribe-text').textContent = 'Transcribing...';
+    document.getElementById('transcribe-spinner').style.display = 'inline-block';
 
-        try {
-            const result = await transcribeAudio({
-                audio: selectedAudio,
-                encounterId,
-                patientId,
-                languageHint: document.getElementById('consult-language').value || undefined,
-            });
+    try {
+      const result = await transcribeAudio({
+        audio: selectedAudio,
+        encounterId,
+        patientId,
+        languageHint: document.getElementById('consult-language').value || undefined,
+      });
 
-            // Show transcript
-            document.getElementById('step2-card').style.display = 'block';
-            document.getElementById('transcript-text').value = result.transcript || '';
-            document.getElementById('transcript-lang').textContent = result.language || 'Unknown';
-            document.getElementById('transcript-conf').textContent = result.confidence ? `${(result.confidence * 100).toFixed(0)}%` : '-';
+      // Show transcript
+      document.getElementById('step2-card').style.display = 'block';
+      document.getElementById('transcript-text').value = result.transcript || '';
+      document.getElementById('transcript-lang').textContent = result.language || 'Unknown';
+      document.getElementById('transcript-conf').textContent = result.confidence ? `${(result.confidence * 100).toFixed(0)}%` : '-';
 
-            const statusBadge = document.getElementById('transcript-status');
-            statusBadge.className = result.status === 'success' ? 'badge badge-success' : 'badge badge-warning';
-            statusBadge.textContent = result.status === 'success' ? 'Complete' : 'Low Confidence';
+      const statusBadge = document.getElementById('transcript-status');
+      statusBadge.className = result.status === 'success' ? 'badge badge-success' : 'badge badge-warning';
+      statusBadge.textContent = result.status === 'success' ? 'Complete' : 'Low Confidence';
 
-            if (result.requires_verification) {
-                document.getElementById('transcript-alert').innerHTML = `
+      if (result.requires_verification) {
+        document.getElementById('transcript-alert').innerHTML = `
           <div class="alert alert-warning">
             <span class="material-icons-outlined" style="font-size:18px">warning</span>
             <div>Please review the transcript carefully before generating a note.</div>
           </div>
         `;
-            }
+      }
 
-            // Update step indicators
-            document.getElementById('step1-indicator').classList.remove('active');
-            document.getElementById('step1-indicator').classList.add('done');
-            document.getElementById('step2-indicator').classList.add('active');
+      // Update step indicators
+      document.getElementById('step1-indicator').classList.remove('active');
+      document.getElementById('step1-indicator').classList.add('done');
+      document.getElementById('step2-indicator').classList.add('active');
 
-            showToast('Transcription complete!', 'success');
+      showToast('Transcription complete!', 'success');
 
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            transcribeBtn.disabled = false;
-            document.getElementById('transcribe-text').textContent = 'Transcribe Audio';
-            document.getElementById('transcribe-spinner').style.display = 'none';
-        }
-    });
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      transcribeBtn.disabled = false;
+      document.getElementById('transcribe-text').textContent = 'Transcribe Audio';
+      document.getElementById('transcribe-spinner').style.display = 'none';
+    }
+  });
 
-    // Step 2: Generate Note
-    document.getElementById('generate-note-btn').addEventListener('click', async () => {
-        const encounterId = document.getElementById('consult-encounter').value.trim();
-        const patientId = document.getElementById('consult-patient').value.trim();
+  // Step 2: Generate Note
+  document.getElementById('generate-note-btn').addEventListener('click', async () => {
+    const encounterId = document.getElementById('consult-encounter').value.trim();
+    const patientId = document.getElementById('consult-patient').value.trim();
 
-        const btn = document.getElementById('generate-note-btn');
-        btn.disabled = true;
-        document.getElementById('generate-text').textContent = 'Generating...';
-        document.getElementById('generate-spinner').style.display = 'inline-block';
+    const btn = document.getElementById('generate-note-btn');
+    btn.disabled = true;
+    document.getElementById('generate-text').textContent = 'Generating...';
+    document.getElementById('generate-spinner').style.display = 'inline-block';
 
-        try {
-            const result = await generateNote(encounterId, patientId);
+    try {
+      const result = await generateNote(encounterId, patientId);
 
-            // Show note
-            document.getElementById('step3-card').style.display = 'block';
+      // Show note
+      document.getElementById('step3-card').style.display = 'block';
 
-            const noteDraft = result.note_draft || {};
-            const noteText = noteDraft.content || noteDraft.note || JSON.stringify(noteDraft, null, 2);
-            document.getElementById('note-text').value = noteText;
+      const noteDraft = result.note_draft || {};
+      const noteText = noteDraft.content || noteDraft.note || JSON.stringify(noteDraft, null, 2);
+      document.getElementById('note-text').value = noteText;
 
-            if (result.safety_flags && result.safety_flags.length > 0) {
-                document.getElementById('note-safety-flags').innerHTML = `
+      if (result.safety_flags && result.safety_flags.length > 0) {
+        document.getElementById('note-safety-flags').innerHTML = `
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             ${result.safety_flags.map(f => `<span class="badge badge-warning">${f}</span>`).join('')}
           </div>
         `;
-            }
+      }
 
-            // Update steps
-            document.getElementById('step2-indicator').classList.remove('active');
-            document.getElementById('step2-indicator').classList.add('done');
-            document.getElementById('step3-indicator').classList.add('active');
+      // Update steps
+      document.getElementById('step2-indicator').classList.remove('active');
+      document.getElementById('step2-indicator').classList.add('done');
+      document.getElementById('step3-indicator').classList.add('active');
 
-            showToast('Clinical note generated!', 'success');
+      showToast('Clinical note generated!', 'success');
 
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            btn.disabled = false;
-            document.getElementById('generate-text').textContent = 'Generate Clinical Note';
-            document.getElementById('generate-spinner').style.display = 'none';
-        }
-    });
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      document.getElementById('generate-text').textContent = 'Generate Clinical Note';
+      document.getElementById('generate-spinner').style.display = 'none';
+    }
+  });
 
-    // Step 3: Verify & Save
-    document.getElementById('verify-btn').addEventListener('click', async () => {
-        const encounterId = document.getElementById('consult-encounter').value.trim();
-        const patientId = document.getElementById('consult-patient').value.trim();
-        const verifiedNoteText = document.getElementById('note-text').value.trim();
+  // Step 3: Verify & Save
+  document.getElementById('verify-btn').addEventListener('click', async () => {
+    const encounterId = document.getElementById('consult-encounter').value.trim();
+    const patientId = document.getElementById('consult-patient').value.trim();
+    const verifiedNoteText = document.getElementById('note-text').value.trim();
 
-        if (!verifiedNoteText) {
-            showToast('Note cannot be empty', 'warning');
-            return;
-        }
+    if (!verifiedNoteText) {
+      showToast('Note cannot be empty', 'warning');
+      return;
+    }
 
-        if (!confirm('Are you sure you want to verify and save this clinical note to EMR? This action cannot be undone.')) {
-            return;
-        }
+    if (!confirm('Are you sure you want to verify and save this clinical note to EMR? This action cannot be undone.')) {
+      return;
+    }
 
-        const btn = document.getElementById('verify-btn');
-        btn.disabled = true;
-        document.getElementById('verify-text').textContent = 'Saving...';
-        document.getElementById('verify-spinner').style.display = 'inline-block';
+    const btn = document.getElementById('verify-btn');
+    btn.disabled = true;
+    document.getElementById('verify-text').textContent = 'Saving...';
+    document.getElementById('verify-spinner').style.display = 'inline-block';
 
-        try {
-            const result = await verifyNote(encounterId, patientId, verifiedNoteText);
+    try {
+      const result = await verifyNote(encounterId, patientId, verifiedNoteText);
 
-            // Show success
-            document.getElementById('step3-card').style.display = 'none';
-            document.getElementById('step4-card').style.display = 'block';
-            document.getElementById('emr-message').textContent = result.message || 'Note verified and saved successfully.';
+      // Show success
+      document.getElementById('step3-card').style.display = 'none';
+      document.getElementById('step4-card').style.display = 'block';
+      document.getElementById('emr-message').textContent = result.message || 'Note verified and saved successfully.';
 
-            // Update steps
-            document.getElementById('step3-indicator').classList.remove('active');
-            document.getElementById('step3-indicator').classList.add('done');
-            document.getElementById('step4-indicator').classList.add('done');
+      // Update steps
+      document.getElementById('step3-indicator').classList.remove('active');
+      document.getElementById('step3-indicator').classList.add('done');
+      document.getElementById('step4-indicator').classList.add('done');
 
-            showToast('Note saved to EMR!', 'success');
+      showToast('Note saved to EMR!', 'success');
 
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            btn.disabled = false;
-            document.getElementById('verify-text').textContent = 'Verify & Save to EMR';
-            document.getElementById('verify-spinner').style.display = 'none';
-        }
-    });
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      document.getElementById('verify-text').textContent = 'Verify & Save to EMR';
+      document.getElementById('verify-spinner').style.display = 'none';
+    }
+  });
 }
