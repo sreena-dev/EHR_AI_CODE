@@ -12,6 +12,13 @@ export async function renderOCRUpload() {
 
   const bodyHTML = `
     <style type="text/css">
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
         .dashed-border {
             background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%232563EB' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
         }
@@ -22,31 +29,54 @@ export async function renderOCRUpload() {
             background-color: rgba(37, 99, 235, 0.1);
             transform: scale(1.01);
         }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-dropdown {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
     </style>
 
-    <div class="h-[calc(100vh-140px)] flex flex-col p-4 md:p-6 lg:p-8 overflow-hidden">
-        <div class="w-full max-w-6xl mx-auto bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
+    <div class="h-full flex flex-col p-2 md:p-3 overflow-hidden">
+        <div class="w-full max-w-7xl mx-auto bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
         <!-- Left: Upload Section -->
-        <section class="flex-1 p-6 md:p-8 lg:p-10 flex flex-col border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 overflow-y-auto">
+        <section class="flex-1 p-6 md:p-8 lg:p-10 flex flex-col border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 overflow-hidden">
             <div class="flex justify-between items-start mb-6 shrink-0">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Upload Prescription</h1>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Ensure all details are legible for OCR processing</p>
                 </div>
-                <div class="relative group">
-                    <select id="language-hint" class="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm outline-none cursor-pointer">
-                        <option value="auto">🇬🇧 English (Auto)</option>
-                        <option value="ta">🇮🇳 Tamil</option>
-                        <option value="hi">🇮🇳 Hindi</option>
-                    </select>
+                <div class="relative">
+                    <button id="language-btn" class="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-all shadow-sm outline-none cursor-pointer min-w-[150px] justify-between h-[42px]">
+                        <span class="flex items-center gap-2">
+                            <span id="current-lang-text">🇬🇧 English (Auto)</span>
+                        </span>
+                        <span class="material-icons text-gray-400 text-[18px]">expand_more</span>
+                    </button>
+                    <div id="language-dropdown" class="hidden absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden animate-dropdown">
+                        <button class="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-primary/5 transition-all flex items-center justify-between lang-opt" data-value="auto">
+                            <span>🇬🇧 English (Auto)</span>
+                            <span class="material-icons text-primary text-[18px] opacity-0 check-icon">check</span>
+                        </button>
+                        <button class="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-primary/5 transition-all flex items-center justify-between lang-opt" data-value="ta">
+                            <span>🇮🇳 Tamil</span>
+                            <span class="material-icons text-primary text-[18px] opacity-0 check-icon">check</span>
+                        </button>
+                        <button class="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-primary/5 transition-all flex items-center justify-between lang-opt" data-value="hi">
+                            <span>🇮🇳 Hindi</span>
+                            <span class="material-icons text-primary text-[18px] opacity-0 check-icon">check</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="language-hint" value="auto" />
                 </div>
             </div>
 
             <div class="flex-1 flex flex-col">
                 <div class="dashed-border rounded-2xl bg-primary/[0.03] dark:bg-primary/[0.05] flex-1 min-h-[320px] flex flex-col items-center justify-center p-10 text-center transition-all hover:bg-primary/[0.06] dark:hover:bg-primary/[0.08] cursor-pointer group relative upload-area" id="upload-area">
                     <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="Upload prescription file" />
-                    <div class="bg-primary/10 dark:bg-primary/20 p-5 rounded-2xl mb-5 group-hover:scale-110 transition-transform">
-                        <span class="material-symbols-outlined text-primary text-5xl">cloud_upload</span>
+                    <div class="bg-primary/10 dark:bg-primary/20 p-4 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                        <span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Drag prescription image here</h3>
                     <p class="text-gray-500 dark:text-gray-400 text-base mb-8">or click to browse your local directory</p>
@@ -64,7 +94,7 @@ export async function renderOCRUpload() {
         </section>
 
         <!-- Right: Preview Section -->
-        <section class="w-full md:w-[350px] lg:w-[400px] bg-gray-50 dark:bg-gray-800/30 p-6 md:p-8 flex flex-col border-l border-gray-200 dark:border-gray-800 overflow-y-auto">
+        <section class="w-full md:w-[350px] lg:w-[400px] bg-gray-50 dark:bg-gray-800/30 p-6 md:p-8 flex flex-col border-l border-gray-200 dark:border-gray-800 overflow-hidden">
             <h2 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-6 shrink-0">File Preview</h2>
             
             <div id="no-preview" class="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl mb-6 bg-white/50 dark:bg-gray-900/50">
@@ -134,7 +164,7 @@ export async function renderOCRUpload() {
     <!-- Results Modal/Overlay (Responsive) -->
     <div id="ocr-results" class="fixed inset-0 z-[3000] bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="p-4 md:p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0">
+            <div class="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center shrink-0">
                 <h3 class="text-lg font-bold flex items-center">
                     <span class="material-icons-outlined text-green-500 mr-2">check_circle</span>
                     Extracted Prescription Data
@@ -199,8 +229,8 @@ export async function renderOCRUpload() {
   const ocrSpinner = document.getElementById('ocr-spinner');
   const ocrBtnIcon = document.getElementById('ocr-btn-icon');
   const removeBtn = document.getElementById('remove-file-btn');
-  const langSelect = document.getElementById('language-hint');
   const warningMsg = document.getElementById('warning-msg');
+  const langHiddenInput = document.getElementById('language-hint');
 
   let selectedFile = null;
 
@@ -269,10 +299,50 @@ export async function renderOCRUpload() {
     checkLanguageWarning();
   }
 
-  langSelect.addEventListener('change', checkLanguageWarning);
+  // Custom Dropdown Logic
+  const langBtn = document.getElementById('language-btn');
+  const langDropdown = document.getElementById('language-dropdown');
+  const currentLangText = document.getElementById('current-lang-text');
+
+  // Set default check
+  langDropdown.querySelector('.lang-opt[data-value="auto"] .check-icon').classList.remove('opacity-0');
+
+  langBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    langDropdown.classList.toggle('hidden');
+    if (!langDropdown.classList.contains('hidden')) {
+      langBtn.classList.add('ring-2', 'ring-primary/20', 'border-primary');
+    } else {
+      langBtn.classList.remove('ring-2', 'ring-primary/20', 'border-primary');
+    }
+  });
+
+  document.querySelectorAll('.lang-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const val = opt.getAttribute('data-value');
+      const label = opt.querySelector('span').textContent.trim();
+
+      langHiddenInput.value = val;
+      currentLangText.textContent = label;
+
+      // Update checks
+      document.querySelectorAll('.lang-opt .check-icon').forEach(icon => icon.classList.add('opacity-0'));
+      opt.querySelector('.check-icon').classList.remove('opacity-0');
+
+      langDropdown.classList.add('hidden');
+      langBtn.classList.remove('ring-2', 'ring-primary/20', 'border-primary');
+
+      checkLanguageWarning();
+    });
+  });
+
+  window.addEventListener('click', () => {
+    langDropdown.classList.add('hidden');
+    langBtn.classList.remove('ring-2', 'ring-primary/20', 'border-primary');
+  });
 
   function checkLanguageWarning() {
-    if (langSelect.value === 'ta') {
+    if (langHiddenInput.value === 'ta') {
       warningMsg.classList.remove('hidden');
       warningMsg.classList.add('flex');
     } else {
@@ -296,7 +366,7 @@ export async function renderOCRUpload() {
         encounterId: `ENC-${Date.now().toString().slice(-6)}`, // Generate temporary IDs if not provided
         patientId: 'PT-AUTO',
         capturedBy: user?.staff_id || 'unknown',
-        languageHint: langSelect.value,
+        languageHint: langHiddenInput.value,
       });
 
       displayResults(result);
