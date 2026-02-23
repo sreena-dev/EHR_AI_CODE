@@ -86,7 +86,7 @@ export function renderAppShell(pageTitle, bodyHTML, activePath) {
       </aside>
 
       <!-- Main Content -->
-      <main class="main-content">
+      <main class="main-content" style="height: 100vh; overflow: hidden;">
         <header class="top-header">
           <div class="top-header-left">
             <h1 class="page-title">${pageTitle}</h1>
@@ -99,7 +99,7 @@ export function renderAppShell(pageTitle, bodyHTML, activePath) {
           </div>
         </header>
 
-        <div class="page-content" id="page-content">
+        <div class="page-content" id="page-content" style="height: calc(100vh - var(--header-height)); overflow: hidden;">
           ${bodyHTML}
         </div>
       </main>
