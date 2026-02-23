@@ -34,6 +34,7 @@ import { renderLiveConsultation } from './pages/live-consultation.js';
 import { renderDoctorProfile } from './pages/doctor-profile.js';
 import { renderScheduling } from './pages/scheduling.js';
 import { renderDraftsRecovery } from './pages/drafts-recovery.js';
+import { renderSchedulingPreferences } from './pages/scheduling-preferences.js';
 
 // Auth guard — redirect to login if not authenticated
 function requireAuth(renderFn) {
@@ -81,6 +82,7 @@ route('/doctor/schedule', requireAuth(renderScheduling));
 route('/doctor/drafts', requireAuth(renderDraftsRecovery));
 route('/doctor/case', requireAuth(renderClinicalCase));
 route('/doctor/emr-success', requireAuth(renderEMRSuccess));
+route('/doctor/scheduling-preferences', requireAuth(renderSchedulingPreferences));
 
 // ═══════════════════════════════════
 // Admin routes
