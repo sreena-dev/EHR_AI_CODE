@@ -8,25 +8,25 @@ import { renderAppShell } from '../components/app-shell.js';
 import { getCurrentUser } from '../api/auth.js';
 
 export async function renderDoctorProfile() {
-    // Mock profile data
-    const profile = {
-        name: 'Dr. Anand Krishnamurthy',
-        regionalName: 'ஆனந்த் கிருஷ்ணமூர்த்தி',
-        staffId: 'DOC-078',
-        specialization: 'General Medicine',
-        license: 'MCI-TN-2018-084721',
-        email: 'anand.k@chennai-clinic.org',
-        phone: '+91 98765 11234',
-        department: 'General Medicine (Floor 1)',
-        shift: 'Morning (6:00 AM – 2:00 PM)',
-        joinDate: '15 Mar 2018',
-        experience: '8 years',
-        consultations: 12847,
-        avgRating: 4.8,
-        notesGenerated: 3206,
-    };
+  // Mock profile data
+  const profile = {
+    name: 'Dr. Anand Krishnamurthy',
+    regionalName: 'ஆனந்த் கிருஷ்ணமூர்த்தி',
+    staffId: 'DOC-078',
+    specialization: 'General Medicine',
+    license: 'MCI-TN-2018-084721',
+    email: 'anand.k@chennai-clinic.org',
+    phone: '+91 98765 11234',
+    department: 'General Medicine (Floor 1)',
+    shift: 'Morning (6:00 AM – 2:00 PM)',
+    joinDate: '15 Mar 2018',
+    experience: '8 years',
+    consultations: 12847,
+    avgRating: 4.8,
+    notesGenerated: 3206,
+  };
 
-    renderAppShell('Profile', `
+  renderAppShell('Profile', `
     <div style="max-width: 960px; margin: 0 auto;">
       <!-- Profile Header -->
       <div class="card" style="margin-bottom: 24px; overflow: hidden;">
@@ -143,7 +143,7 @@ export async function renderDoctorProfile() {
             </h3>
           </div>
           <div class="card-body" style="display: flex; flex-direction: column; gap: 8px;">
-            <a href="#/doctor/scheduling" class="btn btn-ghost" style="justify-content: flex-start; text-decoration: none;">
+            <a href="#/doctor/scheduling-preferences" class="btn btn-ghost" style="justify-content: flex-start; text-decoration: none;">
               <span class="material-icons-outlined" style="font-size: 18px;">calendar_month</span>
               Scheduling Preferences
             </a>
@@ -159,12 +159,12 @@ export async function renderDoctorProfile() {
         </div>
       </div>
     </div>
-  `, '/doctor/dashboard');
+  `, '/doctor/profile');
 
-    document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
-        showToast('Profile editing coming soon', 'info');
-    });
-    document.getElementById('change-pw-btn')?.addEventListener('click', () => {
-        showToast('Password change dialog coming soon', 'info');
-    });
+  document.getElementById('edit-profile-btn')?.addEventListener('click', () => {
+    showToast('Profile editing coming soon', 'info');
+  });
+  document.getElementById('change-pw-btn')?.addEventListener('click', () => {
+    showToast('Password change dialog coming soon', 'info');
+  });
 }

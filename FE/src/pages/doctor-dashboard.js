@@ -61,7 +61,7 @@ export async function renderDoctorDashboard() {
         <span class="material-icons-outlined" style="font-size:18px">mic</span>
         Start Consultation
       </a>
-      <a href="#/doctor/note-verification" class="btn btn-secondary">
+      <a href="#/doctor/drafts" class="btn btn-secondary">
         <span class="material-icons-outlined" style="font-size:18px">description</span>
         Review Notes
       </a>
@@ -139,7 +139,9 @@ export async function renderDoctorDashboard() {
   document.getElementById('card-appointments')?.addEventListener('click', () => {
     location.hash = '#/doctor/schedule';
   });
-  document.getElementById('card-pending')?.addEventListener('click', () => filterTable('Pending'));
+  document.getElementById('card-pending')?.addEventListener('click', () => {
+    location.hash = '#/doctor/queue';
+  });
   document.getElementById('card-review')?.addEventListener('click', () => {
     location.hash = '#/doctor/drafts';
   });

@@ -7,47 +7,47 @@ import { showToast } from '../components/toast.js';
 import { renderAppShell } from '../components/app-shell.js';
 
 export async function renderDraftsRecovery() {
-    // Mock drafts data
-    const drafts = [
-        {
-            id: 1,
-            patient: 'Rajesh Kumar',
-            patientId: 'PAT-2851',
-            encounter: 'ENC-20260221-001',
-            type: 'SOAP Note',
-            savedAt: '21 Feb 2026, 10:48 AM',
-            reason: 'EMR sync failed',
-            size: '2.4 KB',
-            sections: 4,
-            confidence: 0.87,
-        },
-        {
-            id: 2,
-            patient: 'Meena S.',
-            patientId: 'PAT-3012',
-            encounter: 'ENC-20260220-005',
-            type: 'Follow-up Note',
-            savedAt: '20 Feb 2026, 4:15 PM',
-            reason: 'Session interrupted',
-            size: '1.8 KB',
-            sections: 3,
-            confidence: 0.91,
-        },
-        {
-            id: 3,
-            patient: 'Arun P.',
-            patientId: 'PAT-2990',
-            encounter: 'ENC-20260219-002',
-            type: 'SOAP Note',
-            savedAt: '19 Feb 2026, 11:30 AM',
-            reason: 'Manually saved',
-            size: '3.1 KB',
-            sections: 4,
-            confidence: 0.82,
-        },
-    ];
+  // Mock drafts data
+  const drafts = [
+    {
+      id: 1,
+      patient: 'Rajesh Kumar',
+      patientId: 'PAT-2851',
+      encounter: 'ENC-20260221-001',
+      type: 'SOAP Note',
+      savedAt: '21 Feb 2026, 10:48 AM',
+      reason: 'EMR sync failed',
+      size: '2.4 KB',
+      sections: 4,
+      confidence: 0.87,
+    },
+    {
+      id: 2,
+      patient: 'Meena S.',
+      patientId: 'PAT-3012',
+      encounter: 'ENC-20260220-005',
+      type: 'Follow-up Note',
+      savedAt: '20 Feb 2026, 4:15 PM',
+      reason: 'Session interrupted',
+      size: '1.8 KB',
+      sections: 3,
+      confidence: 0.91,
+    },
+    {
+      id: 3,
+      patient: 'Arun P.',
+      patientId: 'PAT-2990',
+      encounter: 'ENC-20260219-002',
+      type: 'SOAP Note',
+      savedAt: '19 Feb 2026, 11:30 AM',
+      reason: 'Manually saved',
+      size: '3.1 KB',
+      sections: 4,
+      confidence: 0.82,
+    },
+  ];
 
-    renderAppShell('Local Drafts', `
+  renderAppShell('Local Drafts', `
     <div style="max-width: 900px; margin: 0 auto;">
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
@@ -142,40 +142,40 @@ export async function renderDraftsRecovery() {
         `).join('')}
       </div>
     </div>
-  `, '/doctor/notes');
+  `, '/doctor/drafts');
 
-    // Per-draft actions
-    document.querySelectorAll('.sync-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;"></span>';
-            await new Promise(r => setTimeout(r, 1500));
-            const card = btn.closest('.draft-card');
-            card.style.opacity = '0.5';
-            showToast('Draft synced to EMR successfully!', 'success');
-        });
+  // Per-draft actions
+  document.querySelectorAll('.sync-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;"></span>';
+      await new Promise(r => setTimeout(r, 1500));
+      const card = btn.closest('.draft-card');
+      card.style.opacity = '0.5';
+      showToast('Draft synced to EMR successfully!', 'success');
     });
+  });
 
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.addEventListener('click', () => navigate('/doctor/note-verification'));
-    });
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => navigate('/doctor/note-verification'));
+  });
 
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (confirm('Delete this draft? This cannot be undone.')) {
-                btn.closest('.draft-card').remove();
-                showToast('Draft deleted', 'info');
-            }
-        });
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (confirm('Delete this draft? This cannot be undone.')) {
+        btn.closest('.draft-card').remove();
+        showToast('Draft deleted', 'info');
+      }
     });
+  });
 
-    document.getElementById('sync-all-btn')?.addEventListener('click', () => {
-        showToast('Syncing all drafts...', 'info');
-    });
+  document.getElementById('sync-all-btn')?.addEventListener('click', () => {
+    showToast('Syncing all drafts...', 'info');
+  });
 
-    document.getElementById('clear-all-btn')?.addEventListener('click', () => {
-        if (confirm('Delete ALL local drafts? This cannot be undone.')) {
-            showToast('All drafts cleared', 'info');
-        }
-    });
+  document.getElementById('clear-all-btn')?.addEventListener('click', () => {
+    if (confirm('Delete ALL local drafts? This cannot be undone.')) {
+      showToast('All drafts cleared', 'info');
+    }
+  });
 }

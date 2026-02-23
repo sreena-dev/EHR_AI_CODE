@@ -8,39 +8,39 @@ import { renderAppShell } from '../components/app-shell.js';
 
 export async function renderNoteVerification() {
 
-    // Mock clinical note data
-    const note = {
-        patientName: 'Rajesh Kumar',
-        patientId: 'PAT-2851',
-        encounter: 'ENC-20260221-001',
-        generatedAt: '21 Feb 2026, 10:45 AM',
-        model: 'Meditron-7B',
-        confidence: 0.87,
-        sections: {
-            subjective: {
-                content: 'Patient reports persistent chest pain for the past 3 days, described as a dull ache in the left substernal region. Pain worsens with exertion and is relieved by rest. Denies shortness of breath, palpitations, or syncope. Reports mild anxiety related to symptoms.',
-                confidence: 0.92,
-                flags: [],
-            },
-            objective: {
-                content: 'Vitals: BP 140/88 mmHg, HR 82 bpm, RR 18/min, SpO2 98%, Temp 98.4°F.\nCardiovascular: Regular rate and rhythm, no murmurs, gallops, or rubs. S1, S2 normal. No JVD.\nLungs: Clear to auscultation bilaterally.\nAbdomen: Soft, non-tender, no organomegaly.',
-                confidence: 0.95,
-                flags: [],
-            },
-            assessment: {
-                content: 'Patient presents with atypical chest pain. Differential diagnosis includes musculoskeletal pain, GERD, and anxiety-related chest pain. Low probability for acute coronary syndrome based on presentation and vital signs.',
-                confidence: 0.78,
-                flags: ['Unverified differential — requires clinical judgment'],
-            },
-            plan: {
-                content: '1. Order 12-lead ECG to rule out cardiac pathology\n2. Order troponin levels (stat)\n3. Prescribe pantoprazole 40mg daily for possible GERD\n4. Patient education on when to seek emergency care\n5. Follow-up in 1 week or sooner if symptoms worsen',
-                confidence: 0.85,
-                flags: [],
-            },
-        },
-    };
+  // Mock clinical note data
+  const note = {
+    patientName: 'Rajesh Kumar',
+    patientId: 'PAT-2851',
+    encounter: 'ENC-20260221-001',
+    generatedAt: '21 Feb 2026, 10:45 AM',
+    model: 'Meditron-7B',
+    confidence: 0.87,
+    sections: {
+      subjective: {
+        content: 'Patient reports persistent chest pain for the past 3 days, described as a dull ache in the left substernal region. Pain worsens with exertion and is relieved by rest. Denies shortness of breath, palpitations, or syncope. Reports mild anxiety related to symptoms.',
+        confidence: 0.92,
+        flags: [],
+      },
+      objective: {
+        content: 'Vitals: BP 140/88 mmHg, HR 82 bpm, RR 18/min, SpO2 98%, Temp 98.4°F.\nCardiovascular: Regular rate and rhythm, no murmurs, gallops, or rubs. S1, S2 normal. No JVD.\nLungs: Clear to auscultation bilaterally.\nAbdomen: Soft, non-tender, no organomegaly.',
+        confidence: 0.95,
+        flags: [],
+      },
+      assessment: {
+        content: 'Patient presents with atypical chest pain. Differential diagnosis includes musculoskeletal pain, GERD, and anxiety-related chest pain. Low probability for acute coronary syndrome based on presentation and vital signs.',
+        confidence: 0.78,
+        flags: ['Unverified differential — requires clinical judgment'],
+      },
+      plan: {
+        content: '1. Order 12-lead ECG to rule out cardiac pathology\n2. Order troponin levels (stat)\n3. Prescribe pantoprazole 40mg daily for possible GERD\n4. Patient education on when to seek emergency care\n5. Follow-up in 1 week or sooner if symptoms worsen',
+        confidence: 0.85,
+        flags: [],
+      },
+    },
+  };
 
-    renderAppShell('Note Verification', `
+  renderAppShell('Note Verification', `
     <div class="page-content">
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
@@ -67,7 +67,7 @@ export async function renderNoteVerification() {
         </div>
       </div>
 
-      <!-- Patient Info Bar -->
+      < !--Patient Info Bar-- >
       <div class="card" style="margin-bottom: 20px;">
         <div class="card-body" style="padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
           <div style="display: flex; align-items: center; gap: 16px;">
@@ -90,9 +90,9 @@ export async function renderNoteVerification() {
         </div>
       </div>
 
-      <!-- SOAP Sections -->
-      <div class="note-sections">
-        ${Object.entries(note.sections).map(([key, section]) => `
+      <!--SOAP Sections-- >
+  <div class="note-sections">
+    ${Object.entries(note.sections).map(([key, section]) => `
           <div class="note-section card" data-section="${key}">
             <div class="card-header">
               <div style="display: flex; align-items: center; gap: 10px;">
@@ -138,55 +138,55 @@ export async function renderNoteVerification() {
             </div>
           </div>
         `).join('')}
-      </div>
-    </div>
-  `, '/doctor/notes');
+  </div>
+    </div >
+  `, '/doctor/note-verification');
 
-    // Edit buttons
-    document.querySelectorAll('.note-edit-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const section = btn.dataset.section;
-            document.getElementById(`content-${section}`).style.display = 'none';
-            document.getElementById(`edit-${section}`).style.display = 'block';
-            btn.style.display = 'none';
-        });
+  // Edit buttons
+  document.querySelectorAll('.note-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.dataset.section;
+      document.getElementById(`content - ${section} `).style.display = 'none';
+      document.getElementById(`edit - ${section} `).style.display = 'block';
+      btn.style.display = 'none';
     });
+  });
 
-    document.querySelectorAll('.note-cancel-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const section = btn.dataset.section;
-            document.getElementById(`content-${section}`).style.display = 'block';
-            document.getElementById(`edit-${section}`).style.display = 'none';
-            document.querySelector(`.note-edit-btn[data-section="${section}"]`).style.display = '';
-        });
+  document.querySelectorAll('.note-cancel-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.dataset.section;
+      document.getElementById(`content - ${section} `).style.display = 'block';
+      document.getElementById(`edit - ${section} `).style.display = 'none';
+      document.querySelector(`.note - edit - btn[data - section="${section}"]`).style.display = '';
     });
+  });
 
-    document.querySelectorAll('.note-save-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const section = btn.dataset.section;
-            const textarea = document.querySelector(`#edit-${section} textarea`);
-            document.getElementById(`content-${section}`).innerHTML = textarea.value.replace(/\n/g, '<br>');
-            document.getElementById(`content-${section}`).style.display = 'block';
-            document.getElementById(`edit-${section}`).style.display = 'none';
-            document.querySelector(`.note-edit-btn[data-section="${section}"]`).style.display = '';
-            showToast(`${section.charAt(0).toUpperCase() + section.slice(1)} section updated`, 'success');
-        });
+  document.querySelectorAll('.note-save-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.dataset.section;
+      const textarea = document.querySelector(`#edit - ${section} textarea`);
+      document.getElementById(`content - ${section} `).innerHTML = textarea.value.replace(/\n/g, '<br>');
+      document.getElementById(`content - ${section} `).style.display = 'block';
+      document.getElementById(`edit - ${section} `).style.display = 'none';
+      document.querySelector(`.note - edit - btn[data - section="${section}"]`).style.display = '';
+      showToast(`${section.charAt(0).toUpperCase() + section.slice(1)} section updated`, 'success');
     });
+  });
 
-    // Sign note
-    document.getElementById('sign-note-btn').addEventListener('click', () => {
-        const checkboxes = document.querySelectorAll('.section-verify');
-        const allVerified = [...checkboxes].every(cb => cb.checked);
-        if (!allVerified) {
-            showToast('Please verify all sections before signing', 'warning');
-            return;
-        }
-        showToast('Clinical note verified and signed!', 'success');
-        setTimeout(() => navigate('/doctor/dashboard'), 1000);
-    });
+  // Sign note
+  document.getElementById('sign-note-btn').addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll('.section-verify');
+    const allVerified = [...checkboxes].every(cb => cb.checked);
+    if (!allVerified) {
+      showToast('Please verify all sections before signing', 'warning');
+      return;
+    }
+    showToast('Clinical note verified and signed!', 'success');
+    setTimeout(() => navigate('/doctor/dashboard'), 1000);
+  });
 
-    // Clarification button
-    document.getElementById('request-clarification-btn').addEventListener('click', () => {
-        navigate('/doctor/clarification');
-    });
+  // Clarification button
+  document.getElementById('request-clarification-btn').addEventListener('click', () => {
+    navigate('/doctor/clarification');
+  });
 }
