@@ -8,38 +8,38 @@ import { renderAppShell } from '../components/app-shell.js';
 
 export async function renderClarification() {
 
-    // Mock thread data
-    const threads = [
-        {
-            id: 1,
-            patient: 'Rajesh Kumar',
-            patientId: 'PAT-2851',
-            category: 'Vitals',
-            status: 'pending',
-            priority: 'high',
-            createdAt: '21 Feb 2026, 10:52 AM',
-            messages: [
-                { from: 'Dr. Anand', role: 'doctor', time: '10:52 AM', text: 'The BP reading seems unusually high for this patient. Can you please re-check and confirm? Was the patient resting before measurement?' },
-                { from: 'Nurse Priya', role: 'nurse', time: '11:05 AM', text: 'Rechecked BP after 10 minutes of rest. New reading: 138/86 mmHg. Previous reading was taken immediately after patient walked in.' },
-            ],
-        },
-        {
-            id: 2,
-            patient: 'Meena S.',
-            patientId: 'PAT-3012',
-            category: 'Medication',
-            status: 'resolved',
-            priority: 'medium',
-            createdAt: '20 Feb 2026, 3:15 PM',
-            messages: [
-                { from: 'Dr. Anand', role: 'doctor', time: '3:15 PM', text: 'Please confirm allergy list — patient mentioned penicillin allergy during consultation but it\'s not in the chart.' },
-                { from: 'Nurse Kavitha', role: 'nurse', time: '3:30 PM', text: 'Updated allergy list. Patient confirmed penicillin allergy. Added to chart and flagged in medication system.' },
-                { from: 'Dr. Anand', role: 'doctor', time: '3:35 PM', text: 'Thank you. Resolving this thread.' },
-            ],
-        },
-    ];
+  // Mock thread data
+  const threads = [
+    {
+      id: 1,
+      patient: 'Rajesh Kumar',
+      patientId: 'PAT-2851',
+      category: 'Vitals',
+      status: 'pending',
+      priority: 'high',
+      createdAt: '21 Feb 2026, 10:52 AM',
+      messages: [
+        { from: 'Dr. Anand', role: 'doctor', time: '10:52 AM', text: 'The BP reading seems unusually high for this patient. Can you please re-check and confirm? Was the patient resting before measurement?' },
+        { from: 'Nurse Priya', role: 'nurse', time: '11:05 AM', text: 'Rechecked BP after 10 minutes of rest. New reading: 138/86 mmHg. Previous reading was taken immediately after patient walked in.' },
+      ],
+    },
+    {
+      id: 2,
+      patient: 'Meena S.',
+      patientId: 'PAT-3012',
+      category: 'Medication',
+      status: 'resolved',
+      priority: 'medium',
+      createdAt: '20 Feb 2026, 3:15 PM',
+      messages: [
+        { from: 'Dr. Anand', role: 'doctor', time: '3:15 PM', text: 'Please confirm allergy list — patient mentioned penicillin allergy during consultation but it\'s not in the chart.' },
+        { from: 'Nurse Kavitha', role: 'nurse', time: '3:30 PM', text: 'Updated allergy list. Patient confirmed penicillin allergy. Added to chart and flagged in medication system.' },
+        { from: 'Dr. Anand', role: 'doctor', time: '3:35 PM', text: 'Thank you. Resolving this thread.' },
+      ],
+    },
+  ];
 
-    renderAppShell('Clarification Workflow', `
+  renderAppShell('Clarification Workflow', `
     <div class="page-content">
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
@@ -136,45 +136,45 @@ export async function renderClarification() {
         `).join('')}
       </div>
     </div>
-  `, '/doctor/consultation');
+  `, '/doctor/clarification');
 
-    // Toggle thread expansion
-    document.querySelectorAll('.thread-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
-            const body = document.getElementById(`thread-${id}`);
-            const icon = btn.querySelector('.material-icons-outlined');
-            if (body.style.display === 'none') {
-                body.style.display = 'block';
-                icon.textContent = 'expand_less';
-            } else {
-                body.style.display = 'none';
-                icon.textContent = 'expand_more';
-            }
-        });
+  // Toggle thread expansion
+  document.querySelectorAll('.thread-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const body = document.getElementById(`thread-${id}`);
+      const icon = btn.querySelector('.material-icons-outlined');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        icon.textContent = 'expand_less';
+      } else {
+        body.style.display = 'none';
+        icon.textContent = 'expand_more';
+      }
     });
+  });
 
-    // Reply
-    document.querySelectorAll('.reply-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.dataset.id;
-            const input = document.querySelector(`.reply-input[data-id="${id}"]`);
-            if (input.value.trim()) {
-                showToast('Reply sent', 'success');
-                input.value = '';
-            }
-        });
+  // Reply
+  document.querySelectorAll('.reply-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const input = document.querySelector(`.reply-input[data-id="${id}"]`);
+      if (input.value.trim()) {
+        showToast('Reply sent', 'success');
+        input.value = '';
+      }
     });
+  });
 
-    // Resolve
-    document.querySelectorAll('.resolve-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            showToast('Thread resolved', 'success');
-        });
+  // Resolve
+  document.querySelectorAll('.resolve-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      showToast('Thread resolved', 'success');
     });
+  });
 
-    // New thread
-    document.getElementById('new-thread-btn').addEventListener('click', () => {
-        showToast('New clarification dialog coming soon', 'info');
-    });
+  // New thread
+  document.getElementById('new-thread-btn').addEventListener('click', () => {
+    showToast('New clarification dialog coming soon', 'info');
+  });
 }

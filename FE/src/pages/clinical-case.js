@@ -7,66 +7,75 @@ import { showToast } from '../components/toast.js';
 import { renderAppShell } from '../components/app-shell.js';
 
 export async function renderClinicalCase() {
-    // Mock case data
-    const caseData = {
-        caseId: '12944',
-        department: 'Emergency Department',
-        patient: {
-            name: 'Harold Finch',
-            age: 42,
-            gender: 'Male',
-            mrn: 'PAT-4281',
-            bloodType: 'O+',
-            allergies: ['Penicillin', 'Sulfa'],
-            language: 'Tamil / English',
-        },
-        encounter: {
-            id: 'ENC-20260221-012',
-            date: '21 Feb 2026, 09:30 AM',
-            type: 'Emergency Visit',
-            triageLevel: 'Urgent',
-        },
-        vitals: {
-            bp: '145/90 mmHg',
-            hr: '98 bpm',
-            rr: '20/min',
-            temp: '37.2°C',
-            spo2: '97%',
-        },
-        diagnosis: {
-            primary: 'Severe Chest Pain',
-            description: 'Patient reports 3 days of acute onset chest pain. No history of similar episodes.',
-            differentials: ['Acute Coronary Syndrome', 'Musculoskeletal Pain', 'GERD', 'Anxiety'],
-        },
-        medications: [
-            { name: 'Aspirin', dose: '325 mg', route: 'PO', frequency: 'Stat', status: 'Ordered' },
-            { name: 'Nitroglycerin SL', dose: '0.4 mg', route: 'SL', frequency: 'PRN', status: 'Ordered' },
-            { name: 'Pantoprazole', dose: '40 mg', route: 'IV', frequency: 'Daily', status: 'Pending' },
-            { name: 'Morphine', dose: '2 mg', route: 'IV', frequency: 'PRN', status: 'Pending' },
-        ],
-        procedures: [
-            { name: '12-Lead ECG', status: 'Ordered', priority: 'Stat' },
-            { name: 'Troponin I', status: 'Ordered', priority: 'Stat' },
-            { name: 'Chest X-Ray', status: 'Pending', priority: 'Urgent' },
-            { name: 'CBC + BMP', status: 'Ordered', priority: 'Routine' },
-        ],
-        safetyAlerts: [
-            { icon: 'warning', text: 'OCR Review Needed: Low confidence Tamil transcription', severity: 'warning' },
-            { icon: 'medication', text: 'Medication dosage requires verification', severity: 'error' },
-            { icon: 'person', text: 'Patient age must be confirmed', severity: 'warning' },
-        ],
-        followUp: 'Cardiology consult within 24 hours. Repeat troponin in 6 hours. Discharge planning pending test results.',
-        education: 'Patient educated on chest pain warning signs, when to call 911, nitroglycerin usage instructions.',
-    };
+  // Mock case data
+  const caseData = {
+    caseId: '12944',
+    department: 'Emergency Department',
+    patient: {
+      name: 'Harold Finch',
+      age: 42,
+      gender: 'Male',
+      mrn: 'PAT-4281',
+      bloodType: 'O+',
+      allergies: ['Penicillin', 'Sulfa'],
+      language: 'Tamil / English',
+    },
+    encounter: {
+      id: 'ENC-20260221-012',
+      date: '21 Feb 2026, 09:30 AM',
+      type: 'Emergency Visit',
+      triageLevel: 'Urgent',
+    },
+    vitals: {
+      bp: '145/90 mmHg',
+      hr: '98 bpm',
+      rr: '20/min',
+      temp: '37.2°C',
+      spo2: '97%',
+    },
+    diagnosis: {
+      primary: 'Severe Chest Pain',
+      description: 'Patient reports 3 days of acute onset chest pain. No history of similar episodes.',
+      differentials: ['Acute Coronary Syndrome', 'Musculoskeletal Pain', 'GERD', 'Anxiety'],
+    },
+    medications: [
+      { name: 'Aspirin', dose: '325 mg', route: 'PO', frequency: 'Stat', status: 'Ordered' },
+      { name: 'Nitroglycerin SL', dose: '0.4 mg', route: 'SL', frequency: 'PRN', status: 'Ordered' },
+      { name: 'Pantoprazole', dose: '40 mg', route: 'IV', frequency: 'Daily', status: 'Pending' },
+      { name: 'Morphine', dose: '2 mg', route: 'IV', frequency: 'PRN', status: 'Pending' },
+    ],
+    procedures: [
+      { name: '12-Lead ECG', status: 'Ordered', priority: 'Stat' },
+      { name: 'Troponin I', status: 'Ordered', priority: 'Stat' },
+      { name: 'Chest X-Ray', status: 'Pending', priority: 'Urgent' },
+      { name: 'CBC + BMP', status: 'Ordered', priority: 'Routine' },
+    ],
+    safetyAlerts: [
+      { icon: 'warning', text: 'OCR Review Needed: Low confidence Tamil transcription', severity: 'warning' },
+      { icon: 'medication', text: 'Medication dosage requires verification', severity: 'error' },
+      { icon: 'person', text: 'Patient age must be confirmed', severity: 'warning' },
+    ],
+    followUp: 'Cardiology consult within 24 hours. Repeat troponin in 6 hours. Discharge planning pending test results.',
+    education: 'Patient educated on chest pain warning signs, when to call 911, nitroglycerin usage instructions.',
+    additionalDetails: {
+      previousAdmissions: '3 admissions for hypertension (2022-2024)',
+      familyHistory: 'Father: MI at 55. Mother: Diabetic.',
+      socialHistory: 'Non-smoker. Occasional alcohol. High-stress job.',
+      insurance: 'BlueCross Platinum - Active',
+      preferredPharmacy: 'Apollo Pharmacy - Anna Nagar',
+    }
+  };
 
-    const tabs = [
-        { id: 'demographics', label: 'Demographics', icon: 'person' },
-        { id: 'diagnosis', label: 'Diagnosis & Treatment', icon: 'medical_information' },
-        { id: 'medications', label: 'Medications', icon: 'medication' },
-        { id: 'plan', label: 'Treatment Plan', icon: 'checklist' },
-    ];
+  const tabs = [
+    { id: 'demographics', label: 'Demographics', icon: 'person' },
+    { id: 'diagnosis', label: 'Diagnosis & Treatment', icon: 'medical_information' },
+    { id: 'focused-objective', label: 'Focused Objective', icon: 'troubleshoot' },
+    { id: 'focused-assessment', label: 'Focused Assessment', icon: 'biotech' },
+    { id: 'medications', label: 'Medications', icon: 'medication' },
+    { id: 'plan', label: 'Treatment Plan', icon: 'checklist' },
+  ];
 
-    renderAppShell('Clinical Verification', `
+  renderAppShell('Clinical Verification', `
     <div style="max-width: 1100px; margin: 0 auto;">
       <!-- Case Header -->
       <div class="card" style="margin-bottom: 20px; border-left: 4px solid var(--primary-500);">
@@ -83,6 +92,10 @@ export async function renderClinicalCase() {
                 <span class="text-sm text-muted">${caseData.patient.age}Y • ${caseData.patient.gender}</span>
                 <span class="badge badge-neutral">${caseData.patient.mrn}</span>
                 <span class="text-sm text-muted">Blood: ${caseData.patient.bloodType}</span>
+                <button class="btn btn-ghost btn-sm" id="view-additional-details" style="padding: 2px 8px; font-size: 11px;">
+                  <span class="material-icons-outlined" style="font-size: 14px;">visibility</span>
+                  View Additional Details
+                </button>
               </div>
             </div>
             <div style="display: flex; gap: 8px;">
@@ -196,6 +209,67 @@ export async function renderClinicalCase() {
         </div>
       </div>
 
+      <!-- Tab: Focused Objective -->
+      <div class="tab-panel" id="panel-focused-objective" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h3 style="margin:0;">Focused Objective Verification</h3>
+            <span class="badge badge-info">AI Suggestions Available</span>
+          </div>
+          <div class="card-body">
+            <div style="background: var(--gray-50); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; border-left: 4px solid var(--info);">
+              <p class="text-sm"><strong>AI Insight:</strong> Based on the audio transcription and OCR data, the following objective findings require specific validation.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div class="verify-item-detailed" style="display: flex; gap: 16px; padding: 16px; border: 1px solid var(--gray-200); border-radius: var(--radius-md);">
+                <div style="width: 24px;"><span class="material-icons-outlined text-info">monitor_heart</span></div>
+                <div style="flex: 1;">
+                   <h4 style="margin: 0 0 4px;">Cardiovascular Examination</h4>
+                   <p class="text-sm text-muted">S1 and S2 heard clearly. No murmurs or gallops. Peripheral pulses symmetric and 2+.</p>
+                </div>
+                <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+              </div>
+              <div class="verify-item-detailed" style="display: flex; gap: 16px; padding: 16px; border: 1px solid var(--gray-200); border-radius: var(--radius-md);">
+                <div style="width: 24px;"><span class="material-icons-outlined text-info">air</span></div>
+                <div style="flex: 1;">
+                   <h4 style="margin: 0 0 4px;">Respiratory findings</h4>
+                   <p class="text-sm text-muted">Clear to auscultation bilaterally. No rales, rhonchi, or wheezes. Non-labored breathing.</p>
+                </div>
+                <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Focused Assessment -->
+      <div class="tab-panel" id="panel-focused-assessment" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h3 style="margin:0;">Focused Assessment Insights</h3>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+               <div class="card" style="box-shadow: none; border: 1px solid var(--gray-100);">
+                  <div class="card-header" style="padding: 8px 16px;"><h4 style="margin:0;">Clinical Reasoning</h4></div>
+                  <div class="card-body">
+                    <p class="text-xs text-muted" style="line-height: 1.6;">AI identified potential Acute Coronary Syndrome based on sudden chest pain and BP elevation. Troponin results are critical for finalizing this assessment.</p>
+                  </div>
+               </div>
+               <div class="card" style="box-shadow: none; border: 1px solid var(--gray-100);">
+                  <div class="card-header" style="padding: 8px 16px;"><h4 style="margin:0;">Risk Stratification</h4></div>
+                  <div class="card-body">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="badge badge-error">High Risk</span>
+                        <span class="text-xs">HEART Score: 6</span>
+                    </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Tab: Medications -->
       <div class="tab-panel" id="panel-medications" style="display: none;">
         <div class="card">
@@ -267,12 +341,12 @@ export async function renderClinicalCase() {
         </div>
         <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
           ${[
-            'Patient demographics are accurate and complete',
-            'Diagnosis and differentials reviewed',
-            'Medication doses and routes verified',
-            'All ordered tests and procedures confirmed',
-            'Safety alerts addressed and documented',
-        ].map((item, i) => `
+      'Patient demographics are accurate and complete',
+      'Diagnosis and differentials reviewed',
+      'Medication doses and routes verified',
+      'All ordered tests and procedures confirmed',
+      'Safety alerts addressed and documented',
+    ].map((item, i) => `
             <label class="verify-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--gray-50); border-radius: var(--radius-md); cursor: pointer;">
               <input type="checkbox" class="case-verify-cb" data-idx="${i}" style="accent-color: var(--success); width: 18px; height: 18px;" />
               <span class="text-sm">${item}</span>
@@ -282,7 +356,59 @@ export async function renderClinicalCase() {
       </div>
     </div>
 
+    <!-- Additional Details Modal -->
+    <div id="details-modal" class="modal" style="display: none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+          <h3 style="margin:0;">Additional Patient Details</h3>
+          <span class="close-modal" id="close-details-modal">&times;</span>
+        </div>
+        <div class="modal-body" style="padding: 0;">
+          <div class="summary-row"><span class="summary-label">Previous Admissions</span><span class="summary-value">${caseData.additionalDetails.previousAdmissions}</span></div>
+          <div class="summary-row"><span class="summary-label">Family History</span><span class="summary-value">${caseData.additionalDetails.familyHistory}</span></div>
+          <div class="summary-row"><span class="summary-label">Social History</span><span class="summary-value">${caseData.additionalDetails.socialHistory}</span></div>
+          <div class="summary-row"><span class="summary-label">Insurance</span><span class="summary-value">${caseData.additionalDetails.insurance}</span></div>
+          <div class="summary-row"><span class="summary-label">Pharmacy</span><span class="summary-value">${caseData.additionalDetails.preferredPharmacy}</span></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" id="close-details-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
     <style>
+      /* Modal Styles */
+      .modal {
+        position: fixed;
+        z-index: 2000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center; justify-content: center;
+        backdrop-filter: blur(2px);
+      }
+      .modal-content {
+        background: white;
+        border-radius: var(--radius-lg);
+        width: 100%;
+        box-shadow: var(--shadow-xl);
+        animation: modalSlide 0.3s ease;
+      }
+      .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+      .modal-body { max-height: 70vh; overflow-y: auto; }
+      .modal-footer { padding: 16px 20px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; }
+      .close-modal { font-size: 24px; cursor: pointer; color: var(--gray-400); }
+      @keyframes modalSlide { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+      /* Toggle Switch Styles */
+      .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--gray-300); transition: .3s; border-radius: 20px; }
+      .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+      input:checked + .slider { background-color: var(--success); }
+      input:checked + .slider:before { transform: translateX(16px); }
+
       .case-tab {
         flex: 1;
         padding: 10px 16px;
@@ -310,48 +436,63 @@ export async function renderClinicalCase() {
     </style>
   `, '/doctor/notes');
 
-    // Tab switching
-    document.querySelectorAll('.case-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.case-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-            tab.classList.add('active');
-            const panel = document.getElementById(`panel-${tab.dataset.tab}`);
-            if (panel) panel.style.display = 'block';
-        });
+  // Tab switching
+  document.querySelectorAll('.case-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.case-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      tab.classList.add('active');
+      const panel = document.getElementById(`panel-${tab.dataset.tab}`);
+      if (panel) panel.style.display = 'block';
     });
+  });
 
-    // Verification checklist counter
-    document.querySelectorAll('.case-verify-cb').forEach(cb => {
-        cb.addEventListener('change', () => {
-            const checked = document.querySelectorAll('.case-verify-cb:checked').length;
-            const total = document.querySelectorAll('.case-verify-cb').length;
-            document.getElementById('checklist-count').textContent = `${checked}/${total} verified`;
-            document.getElementById('checklist-count').className = checked === total ? 'badge badge-success' : 'badge badge-neutral';
-        });
+  // Verification checklist counter
+  document.querySelectorAll('.case-verify-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const checked = document.querySelectorAll('.case-verify-cb:checked').length;
+      const total = document.querySelectorAll('.case-verify-cb').length;
+      document.getElementById('checklist-count').textContent = `${checked}/${total} verified`;
+      document.getElementById('checklist-count').className = checked === total ? 'badge badge-success' : 'badge badge-neutral';
     });
+  });
 
-    // Approve button
-    document.getElementById('approve-case-btn')?.addEventListener('click', () => {
-        const checked = document.querySelectorAll('.case-verify-cb:checked').length;
-        const total = document.querySelectorAll('.case-verify-cb').length;
-        if (checked < total) {
-            showToast(`Please complete all verification items (${checked}/${total})`, 'warning');
-            return;
-        }
-        showToast('Case approved and signed!', 'success');
-        setTimeout(() => navigate('/doctor/dashboard'), 1000);
-    });
+  // Approve button
+  document.getElementById('approve-case-btn')?.addEventListener('click', () => {
+    const checked = document.querySelectorAll('.case-verify-cb:checked').length;
+    const total = document.querySelectorAll('.case-verify-cb').length;
+    if (checked < total) {
+      showToast(`Please complete all verification items (${checked}/${total})`, 'warning');
+      return;
+    }
+    showToast('Case approved and signed!', 'success');
+    setTimeout(() => navigate('/doctor/dashboard'), 1000);
+  });
 
-    // Edit mode toggle
-    document.getElementById('edit-mode-btn')?.addEventListener('click', () => {
-        const banner = document.getElementById('edit-banner');
-        banner.style.display = banner.style.display === 'none' ? 'flex' : 'none';
-        showToast('Edit mode toggled', 'info');
-    });
+  // Edit mode toggle
+  document.getElementById('edit-mode-btn')?.addEventListener('click', () => {
+    const banner = document.getElementById('edit-banner');
+    banner.style.display = banner.style.display === 'none' ? 'flex' : 'none';
+    showToast('Edit mode toggled', 'info');
+  });
 
-    // Add medication
-    document.getElementById('add-med-btn')?.addEventListener('click', () => {
-        showToast('Add medication dialog coming soon', 'info');
-    });
+  // Add medication
+  document.getElementById('add-med-btn')?.addEventListener('click', () => {
+    showToast('Add medication dialog coming soon', 'info');
+  });
+
+  // Modal Logic
+  const detailsModal = document.getElementById('details-modal');
+  document.getElementById('view-additional-details')?.addEventListener('click', () => {
+    detailsModal.style.display = 'flex';
+  });
+  document.getElementById('close-details-modal')?.addEventListener('click', () => {
+    detailsModal.style.display = 'none';
+  });
+  document.getElementById('close-details-btn')?.addEventListener('click', () => {
+    detailsModal.style.display = 'none';
+  });
+  window.addEventListener('click', (e) => {
+    if (e.target === detailsModal) detailsModal.style.display = 'none';
+  });
 }
