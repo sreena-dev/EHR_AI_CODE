@@ -17,10 +17,8 @@ const DOCTOR_NAV = [
   { icon: 'groups', label: 'Patient Queue', path: '/doctor/queue' },
   { icon: 'mic', label: 'Consultation', path: '/doctor/consultation' },
   { icon: 'video_call', label: 'Live Consultation', path: '/doctor/live-consultation' },
-  { icon: 'description', label: 'Clinical Notes', path: '/doctor/notes' },
   { icon: 'verified', label: 'Note Verification', path: '/doctor/note-verification' },
   { icon: 'help_outline', label: 'Clarification', path: '/doctor/clarification' },
-  { icon: 'drafts', label: 'Local Drafts', path: '/doctor/drafts' },
   { icon: 'person', label: 'Profile', path: '/doctor/profile' },
 ];
 
