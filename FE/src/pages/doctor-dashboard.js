@@ -141,8 +141,7 @@ export async function renderDoctorDashboard() {
   });
   document.getElementById('card-pending')?.addEventListener('click', () => filterTable('Pending'));
   document.getElementById('card-review')?.addEventListener('click', () => {
-    // For review, we link to the actual review page
-    location.hash = '#/doctor/note-verification';
+    location.hash = '#/doctor/drafts';
   });
   document.getElementById('card-completed')?.addEventListener('click', () => filterTable('Completed'));
 }
