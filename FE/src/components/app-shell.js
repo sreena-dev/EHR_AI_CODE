@@ -21,7 +21,6 @@ const DOCTOR_NAV = [
   { icon: 'verified', label: 'Note Verification', path: '/doctor/note-verification' },
   { icon: 'help_outline', label: 'Clarification', path: '/doctor/clarification' },
   { icon: 'drafts', label: 'Local Drafts', path: '/doctor/drafts' },
-  { icon: 'settings', label: 'Preferences', path: '/doctor/scheduling' },
   { icon: 'person', label: 'Profile', path: '/doctor/profile' },
 ];
 
