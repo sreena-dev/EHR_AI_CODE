@@ -69,38 +69,36 @@ class ImagePreprocessor:
         
         # 3. Denoising
         if self.enable_tamil_optimizations or np.std(img) < 30:
-            img = cv2.fastNlMeansDenoising(img, h=10)
-            metadata["applied_operations"].append("denoise")
+            # Use lower h (7 instead of 10) to preserve thin strokes while removing noise
+            img = cv2.fastNlMeansDenoising(img, h=7)
+            metadata["applied_operations"].append("denoise_balanced")
         
         # 4. CLAHE contrast enhancement — dramatically improves OCR on scanned docs
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
         img = clahe.apply(img)
-        metadata["applied_operations"].append("clahe_contrast")
+        metadata["applied_operations"].append("clahe_enhanced")
         
         return img, metadata
     
     def _prescription_preprocessing(self, img: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict]:
         """Prescription-optimized pipeline (text clarity focus)"""
-        # Check if image is already high-contrast/clean (digital/screenshot)
-        # High std dev = good contrast, skip aggressive binarization
-        std_dev = float(np.std(img))
-        mean_val = float(np.mean(img))
-        logger.debug(f"Image stats: std_dev={std_dev:.1f}, mean={mean_val:.1f}")
+        # Multi-scale adaptive thresholding to handle uneven lighting and thin pencil marks
+        # Step 1: Gentle blur to reduce high-frequency noise before thresholding
+        blurred = cv2.GaussianBlur(img, (3, 3), 0)
         
-        if std_dev > 50:
-            # Clean digital image — use simple Otsu threshold which preserves text better
-            _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            metadata["applied_operations"].append("otsu_binarize")
-        else:
-            # Low-contrast/scanned — use adaptive threshold with gentler params
-            # Larger block_size (31) and higher C (10) are less destructive
-            img = cv2.adaptiveThreshold(
-                img, 255, 
-                cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY, 
-                31, 10
-            )
-            metadata["applied_operations"].append("adaptive_binarize")
+        # Step 2: Adaptive thresholding with optimized parameters for handwriting
+        # block_size=35 and C=12 provides better separation for faint clinical notes
+        thresh = cv2.adaptiveThreshold(
+            blurred, 255, 
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv2.THRESH_BINARY, 
+            35, 12
+        )
+        
+        # Step 3: Morphological cleanup to remove pepper noise without eroding thin lines
+        kernel = np.ones((1, 1), np.uint8)
+        img = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        metadata["applied_operations"].append("adaptive_multi_scale_binarize")
         
         # Deskew (common for mobile-captured prescriptions)
         img = self._deskew(img)
