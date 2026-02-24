@@ -21,6 +21,210 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/nurse", tags=["Nurse Station"])
 
 
+# ─── Mock encounter data (replace with DB query in production) ───
+_MOCK_ENCOUNTERS = [
+    {
+        "id": "ENC-2026-001",
+        "patient_name": "Priya Sharma",
+        "type": "Prescription OCR",
+        "status": "Completed",
+        "time": "10:30 AM",
+    },
+    {
+        "id": "ENC-2026-002",
+        "patient_name": "Rajesh Kumar",
+        "type": "Lab Report",
+        "status": "Pending OCR",
+        "time": "11:15 AM",
+    },
+    {
+        "id": "ENC-2026-003",
+        "patient_name": "Meena Devi",
+        "type": "Prescription OCR",
+        "status": "Completed",
+        "time": "11:45 AM",
+    },
+    {
+        "id": "ENC-2026-004",
+        "patient_name": "Arjun Patel",
+        "type": "Prescription OCR",
+        "status": "Requires Review",
+        "time": "12:00 PM",
+    },
+    {
+        "id": "ENC-2026-005",
+        "patient_name": "Lakshmi R.",
+        "type": "Lab Report",
+        "status": "Pending OCR",
+        "time": "12:30 PM",
+    },
+    {
+        "id": "ENC-2026-006",
+        "patient_name": "Suresh M.",
+        "type": "Prescription OCR",
+        "status": "Completed",
+        "time": "01:00 PM",
+    },
+    {
+        "id": "ENC-2026-007",
+        "patient_name": "Kavitha S.",
+        "type": "Lab Report",
+        "status": "Requires Review",
+        "time": "01:30 PM",
+    },
+    {
+        "id": "ENC-2026-008",
+        "patient_name": "Ramesh V.",
+        "type": "Prescription OCR",
+        "status": "Pending OCR",
+        "time": "02:00 PM",
+    },
+]
+
+
+@router.get(
+    "/dashboard-stats",
+    summary="Nurse Dashboard Stats",
+    description="Returns encounter list and aggregate counts for the nurse dashboard.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def get_dashboard_stats():
+    """
+    Returns today's encounters and aggregated stat counts.
+    Production: Replace _MOCK_ENCOUNTERS with a DB query filtered by today's date.
+    """
+    encounters = _MOCK_ENCOUNTERS
+
+    total = len(encounters)
+    pending_ocr = sum(1 for e in encounters if e["status"] == "Pending OCR")
+    requires_review = sum(1 for e in encounters if e["status"] == "Requires Review")
+    completed = sum(1 for e in encounters if e["status"] == "Completed")
+
+    return {
+        "encounters": encounters,
+        "counts": {
+            "total": total,
+            "pending_ocr": pending_ocr,
+            "requires_review": requires_review,
+            "completed": completed,
+        },
+    }
+
+
+# ─── Mock patient queue data ───
+_MOCK_QUEUE = [
+    {"token": "#001", "name": "Priya Sharma",  "age": 28, "gender": "F", "reason": "Follow-up",               "doctor": "Dr. Kumar", "status": "In Consultation", "wait_time": "-"},
+    {"token": "#002", "name": "Rajesh Kumar",   "age": 45, "gender": "M", "reason": "New Visit — Chest Pain",  "doctor": "Dr. Kumar", "status": "Waiting",          "wait_time": "15 min"},
+    {"token": "#003", "name": "Meena Devi",     "age": 62, "gender": "F", "reason": "Lab Review",              "doctor": "Dr. Priya", "status": "Waiting",          "wait_time": "22 min"},
+    {"token": "#004", "name": "Arjun Patel",    "age": 35, "gender": "M", "reason": "Prescription Refill",     "doctor": "Dr. Kumar", "status": "Waiting",          "wait_time": "30 min"},
+    {"token": "#005", "name": "Lakshmi R.",     "age": 50, "gender": "F", "reason": "New Visit — Diabetes",    "doctor": "Dr. Priya", "status": "Checked In",       "wait_time": "5 min"},
+    {"token": "#006", "name": "Suresh M.",      "age": 70, "gender": "M", "reason": "Follow-up — Heart",       "doctor": "Dr. Kumar", "status": "OCR Processing",   "wait_time": "8 min"},
+    {"token": "#007", "name": "Kavitha S.",     "age": 42, "gender": "F", "reason": "Skin Allergy",            "doctor": "Dr. Priya", "status": "Completed",        "wait_time": "-"},
+    {"token": "#008", "name": "Ramesh V.",      "age": 55, "gender": "M", "reason": "Blood Pressure Check",    "doctor": "Dr. Kumar", "status": "Completed",        "wait_time": "-"},
+    {"token": "#009", "name": "Anitha K.",      "age": 33, "gender": "F", "reason": "Prenatal Checkup",        "doctor": "Dr. Priya", "status": "Waiting",          "wait_time": "40 min"},
+    {"token": "#010", "name": "Deepak N.",      "age": 60, "gender": "M", "reason": "Post-Op Review",          "doctor": "Dr. Kumar", "status": "In Consultation",  "wait_time": "-"},
+]
+
+
+@router.get(
+    "/queue-stats",
+    summary="Patient Queue Stats",
+    description="Returns the patient queue with status counts for the queue page.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def get_queue_stats():
+    """
+    Returns the patient queue list and aggregated counts.
+    Production: Replace _MOCK_QUEUE with a DB query.
+    """
+    patients = _MOCK_QUEUE
+
+    total = len(patients)
+    waiting = sum(1 for p in patients if p["status"] in ("Waiting", "Checked In"))
+    in_progress = sum(1 for p in patients if p["status"] in ("In Consultation", "OCR Processing"))
+    completed = sum(1 for p in patients if p["status"] == "Completed")
+
+    return {
+        "patients": patients,
+        "counts": {
+            "total": total,
+            "waiting": waiting,
+            "in_progress": in_progress,
+            "completed": completed,
+        },
+    }
+
+
+# ─── Mock patient registry (production: database) ───
+_PATIENT_REGISTRY = [
+    {"id": "PID-10001", "name": "Priya Sharma",   "age": 28, "gender": "F", "phone": "9876543210", "address": "12 MG Road, Chennai",     "registered": "2025-06-15"},
+    {"id": "PID-10002", "name": "Rajesh Kumar",    "age": 45, "gender": "M", "phone": "9876543211", "address": "45 Anna Nagar, Chennai",   "registered": "2025-08-20"},
+    {"id": "PID-10003", "name": "Meena Devi",      "age": 62, "gender": "F", "phone": "9876543212", "address": "78 T Nagar, Chennai",      "registered": "2024-12-01"},
+    {"id": "PID-10004", "name": "Arjun Patel",     "age": 35, "gender": "M", "phone": "9876543213", "address": "23 Velachery, Chennai",    "registered": "2025-11-10"},
+    {"id": "PID-10005", "name": "Lakshmi R.",      "age": 50, "gender": "F", "phone": "9876543214", "address": "56 Adyar, Chennai",        "registered": "2025-03-05"},
+    {"id": "PID-10006", "name": "Suresh M.",       "age": 70, "gender": "M", "phone": "9876543215", "address": "89 Mylapore, Chennai",     "registered": "2024-07-22"},
+    {"id": "PID-10007", "name": "Kavitha S.",      "age": 42, "gender": "F", "phone": "9876543216", "address": "34 Tambaram, Chennai",     "registered": "2025-01-18"},
+    {"id": "PID-10008", "name": "Ramesh V.",       "age": 55, "gender": "M", "phone": "9876543217", "address": "67 Porur, Chennai",        "registered": "2025-09-30"},
+]
+
+_next_pid = 10009  # auto-increment for new registrations
+
+
+@router.get(
+    "/patients/search",
+    summary="Search Patient Registry",
+    description="Search patients by name, ID, or phone number.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def search_patients(q: str = ""):
+    """Search mock patient registry. Production: DB query with LIKE / full-text."""
+    if not q or len(q) < 2:
+        return {"patients": _PATIENT_REGISTRY[:5]}  # return first 5 if no query
+
+    q_lower = q.lower()
+    results = [
+        p for p in _PATIENT_REGISTRY
+        if q_lower in p["name"].lower()
+        or q_lower in p["id"].lower()
+        or q_lower in p["phone"]
+    ]
+    return {"patients": results}
+
+
+@router.post(
+    "/patients/register",
+    summary="Register New Patient",
+    description="Register a new patient and return the assigned patient ID.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def register_patient(body: dict):
+    """Register a new patient. Production: insert into DB."""
+    global _next_pid
+
+    name = body.get("name", "").strip()
+    age = body.get("age")
+    gender = body.get("gender", "").strip()
+    phone = body.get("phone", "").strip()
+    address = body.get("address", "").strip()
+
+    if not name:
+        return JSONResponse(status_code=400, content={"detail": "Patient name is required"})
+
+    new_patient = {
+        "id": f"PID-{_next_pid}",
+        "name": name,
+        "age": int(age) if age else None,
+        "gender": gender or "U",
+        "phone": phone,
+        "address": address,
+        "registered": "2026-02-25",
+    }
+    _PATIENT_REGISTRY.append(new_patient)
+    _next_pid += 1
+
+    return {"patient": new_patient, "message": "Patient registered successfully"}
+
+
 @router.post(
     "/ocr",
     response_model=OCRResultResponse,
