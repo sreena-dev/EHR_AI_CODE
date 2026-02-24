@@ -70,10 +70,6 @@ export async function renderNurseDashboard() {
         <span class="material-icons-outlined" style="font-size:18px">monitor_heart</span>
         Add Vitals
       </a>
-      <a href="#/nurse/tracking" class="btn btn-secondary" style="height: 48px;">
-        <span class="material-icons-outlined" style="font-size:18px">insights</span>
-        Disease Tracking
-      </a>
     </div>
     <!-- Recent Encounters Table -->
     <div class="card">
