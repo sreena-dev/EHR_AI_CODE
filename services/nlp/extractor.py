@@ -2,7 +2,7 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import time
 from pathlib import Path
@@ -78,7 +78,7 @@ class ClinicalNLPExtractor:
             NLPExtractionError: For unrecoverable NLP failures
             LowConfidenceError: When confidence falls below safety thresholds
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # 1. Preprocess text
@@ -119,7 +119,7 @@ class ClinicalNLPExtractor:
             )
 
             # 8. Build result
-            processing_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            processing_time_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             result = NLPEngineResult(
                 encounter_id=encounter_id,

@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from typing import Dict, Any, Optional, Set
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from pydantic import BaseModel, Field
 
@@ -64,7 +64,7 @@ class WorkflowState(Enum):
 # ======================
 class WorkflowAuditEntry(BaseModel):
     """Immutable record of every state transition for HIPAA compliance"""
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     from_state: Optional[WorkflowState]
     to_state: WorkflowState
     triggered_by: str  # e.g., "nurse_id_123", "system_ocr_service"
@@ -91,7 +91,7 @@ class AIRAWorkflow:
         self._data: Dict[str, Any] = {
             "patient_id": patient_id,
             "encounter_id": encounter_id,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "doctor_verified": False,
             "verified_by": None,
             "verified_at": None,
@@ -131,7 +131,7 @@ class AIRAWorkflow:
                 raise DataValidationError(
                     "Cannot set doctor_verified=True without verified_by staff ID"
                 )
-            self._data["verified_at"] = datetime.utcnow()
+            self._data["verified_at"] = datetime.now(timezone.utc)
 
         self._data[key] = value
 

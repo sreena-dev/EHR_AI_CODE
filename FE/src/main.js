@@ -29,12 +29,14 @@ import { renderOCRResults } from './pages/ocr-results.js';
 import { renderOCREdit } from './pages/ocr-edit.js';
 import { renderEMRSuccess } from './pages/emr-success.js';
 import { renderLiveConsultation } from './pages/live-consultation.js';
+import { renderVitalsEntry } from './pages/vitals-entry.js';
 
 // Utility & settings pages
-import { renderDoctorProfile } from './pages/doctor-profile.js';
+import { renderProfile } from './pages/profile.js';
 import { renderScheduling } from './pages/scheduling.js';
 import { renderDraftsRecovery } from './pages/drafts-recovery.js';
 import { renderSchedulingPreferences } from './pages/scheduling-preferences.js';
+import { renderDiseaseTracking } from './pages/disease-tracking.js';
 
 // Auth guard — redirect to login if not authenticated
 function requireAuth(renderFn) {
@@ -64,6 +66,9 @@ route('/nurse/ocr', requireAuth(renderOCRUpload));
 route('/nurse/ocr-results', requireAuth(renderOCRResults));
 route('/nurse/ocr-edit', requireAuth(renderOCREdit));
 route('/nurse/queue', requireAuth(renderPatientQueue));
+route('/nurse/vitals', requireAuth(renderVitalsEntry));
+route('/nurse/tracking', requireAuth(renderDiseaseTracking));
+route('/nurse/profile', requireAuth(renderProfile));
 
 // ═══════════════════════════════════
 // Doctor routes
@@ -76,13 +81,14 @@ route('/doctor/queue', requireAuth(renderPatientQueue));
 route('/doctor/note-verification', requireAuth(renderNoteVerification));
 route('/doctor/clarification', requireAuth(renderClarification));
 route('/doctor/emr-error', requireAuth(renderEMRError));
-route('/doctor/profile', requireAuth(renderDoctorProfile));
+route('/doctor/profile', requireAuth(renderProfile));
 route('/doctor/scheduling', requireAuth(renderScheduling));
 route('/doctor/schedule', requireAuth(renderScheduling));
 route('/doctor/drafts', requireAuth(renderDraftsRecovery));
 route('/doctor/case', requireAuth(renderClinicalCase));
 route('/doctor/emr-success', requireAuth(renderEMRSuccess));
 route('/doctor/scheduling-preferences', requireAuth(renderSchedulingPreferences));
+route('/doctor/tracking', requireAuth(renderDiseaseTracking));
 
 // ═══════════════════════════════════
 // Admin routes

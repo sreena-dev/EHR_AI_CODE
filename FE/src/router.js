@@ -34,7 +34,7 @@ export function startRouter() {
             currentCleanup = null;
         }
 
-        const path = currentPath();
+        const path = currentPath().split('?')[0];
         const handler = routes[path] || routes['/login'];
 
         if (handler) {

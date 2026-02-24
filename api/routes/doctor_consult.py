@@ -70,12 +70,15 @@ async def transcribe_consultation_audio(
         contents = await audio.read()
         with open(temp_path, "wb") as f:
             f.write(contents)
+        logger.info(f"Audio file written to {temp_path}. Size: {len(contents)} bytes")
         
         # Get workflow instance
+        logger.info(f"Initializing/fetching workflow for encounter {encounter_id}")
         from api.dependencies import get_or_create_workflow
         workflow = get_or_create_workflow(encounter_id, patient_id)
         
         # Transcribe
+        logger.info(f"Starting transcription for {encounter_id} with language_hint={language_hint}")
         transcriber = get_transcriber()
         try:
             result = await transcriber.transcribe_clinical_audio(

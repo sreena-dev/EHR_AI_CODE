@@ -93,7 +93,7 @@ if __name__ == "__main__":
         "api.main:app",
         host="0.0.0.0",
         port=8000,
-        workers=4,  # Production: match CPU cores
+        workers=2,  # Reduced for development to avoid OOM with heavy models
         log_level="info",
         reload=False  # NEVER enable reload in production
     )# Touch for reload

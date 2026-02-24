@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import List, Optional, Literal, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import re
 
@@ -47,7 +47,7 @@ class ClinicalEntity(BaseModel):
     context: Optional[str] = None  # Surrounding text snippet
     negated: bool = False  # True if negated (e.g., "no fever")
     temporality: Literal["PAST", "PRESENT", "FUTURE", "UNKNOWN"] = "UNKNOWN"
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @validator("text")
     def sanitize_text(cls, v):
@@ -75,7 +75,7 @@ class NLPEngineResult(BaseModel):
     model_version: str
     safety_flags: List[str] = Field(default_factory=list)
     confidence_metrics: Dict[str, float] = Field(default_factory=dict)
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,

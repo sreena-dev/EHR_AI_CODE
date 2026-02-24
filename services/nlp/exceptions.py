@@ -105,14 +105,14 @@ class LowConfidenceError(NLPExtractionError):
 from fastapi import Request
 from fastapi.responses import JSONResponse
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
 
 async def nlp_exception_handler(request: Request, exc: NLPExtractionError) -> JSONResponse:
     """FastAPI exception handler for NLP errors"""
-    exc.timestamp = datetime.utcnow()
+    exc.timestamp = datetime.now(timezone.utc)
 
     # Log PHI-safe error
     logger.error(

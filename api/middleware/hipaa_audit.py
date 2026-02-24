@@ -3,7 +3,7 @@ import re
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 
@@ -46,7 +46,7 @@ class HIPAASafeAuditMiddleware(BaseHTTPMiddleware):
     def _log_access(self, request: Request, staff_id: str, action: str, resource: str):
         """Immutable audit log entry (HIPAA requirement)"""
         entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "staff_id": staff_id,
             "action": action,  # "OCR_UPLOAD", "OCR_VIEW", etc.
             "resource": resource,  # "encounter:ENC-2024-001"
