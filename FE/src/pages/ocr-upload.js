@@ -8,9 +8,9 @@ import { uploadPrescription } from '../api/nurse.js';
 import { showToast } from '../components/toast.js';
 
 export async function renderOCRUpload() {
-  const user = getCurrentUser();
+    const user = getCurrentUser();
 
-  const bodyHTML = `
+    const bodyHTML = `
     <style type="text/css">
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -292,88 +292,97 @@ export async function renderOCRUpload() {
     </div>
   `;
 
-  renderAppShell('Verification Hub', bodyHTML, '/nurse/ocr');
+    renderAppShell('Verification Hub', bodyHTML, '/nurse/ocr');
 
-  // Elements
-  const initialView = document.getElementById('initial-upload-view');
-  const verificationView = document.getElementById('verification-view');
-  const uploadArea = document.getElementById('upload-area');
-  const fileInput = document.getElementById('file-input');
-  const viewerImg = document.getElementById('viewer-img');
-  const processingOverlay = document.getElementById('processing-overlay');
-  const successState = document.getElementById('success-state');
-  const finalizeBtn = document.getElementById('finalize-btn-new');
-  const resubmitBtn = document.getElementById('resubmit-btn');
-  const cancelBtn = document.getElementById('verification-cancel-btn');
-  const imageContainer = document.getElementById('image-container');
-  const annoToggle = document.getElementById('annotations-toggle');
-  const annoKnob = document.getElementById('anno-knob');
-  const boxesOverlay = document.getElementById('bounding-boxes-overlay');
+    // Elements
+    const initialView = document.getElementById('initial-upload-view');
+    const verificationView = document.getElementById('verification-view');
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const viewerImg = document.getElementById('viewer-img');
+    const processingOverlay = document.getElementById('processing-overlay');
+    const successState = document.getElementById('success-state');
+    const finalizeBtn = document.getElementById('finalize-btn-new');
+    const resubmitBtn = document.getElementById('resubmit-btn');
+    const cancelBtn = document.getElementById('verification-cancel-btn');
+    const imageContainer = document.getElementById('image-container');
+    const annoToggle = document.getElementById('annotations-toggle');
+    const annoKnob = document.getElementById('anno-knob');
+    const boxesOverlay = document.getElementById('bounding-boxes-overlay');
 
-  let selectedFile = null;
-  let zoomLevel = 1;
-  let showAnnotations = true;
+    let selectedFile = null;
+    let zoomLevel = 1;
+    let showAnnotations = true;
 
-  // File interactions
-  uploadArea.addEventListener('click', (e) => {
-    if (e.target !== fileInput) fileInput.click();
-  });
+    // File interactions
+    uploadArea.addEventListener('click', (e) => {
+        if (e.target !== fileInput) fileInput.click();
+    });
 
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length) handleFile(e.target.files[0]);
-  });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
 
-  function handleFile(file) {
-    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      showToast('Only JPG/PNG images are supported', 'error');
-      return;
+    function handleFile(file) {
+        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+            showToast('Only JPG/PNG images are supported', 'error');
+            return;
+        }
+        selectedFile = file;
+        viewerImg.src = URL.createObjectURL(file);
+        startOCRProcess();
     }
-    selectedFile = file;
-    viewerImg.src = URL.createObjectURL(file);
-    startOCRProcess();
-  }
 
-  async function startOCRProcess() {
-    initialView.classList.add('hidden');
-    processingOverlay.classList.remove('hidden');
+    async function startOCRProcess() {
+        initialView.classList.add('hidden');
+        processingOverlay.classList.remove('hidden');
 
-    try {
-      const result = await uploadPrescription({
-        image: selectedFile,
-        encounterId: `ENC-${Date.now().toString().slice(-6)}`,
-        patientId: 'PT-AUTO',
-        capturedBy: user?.staff_id || 'unknown',
-      });
+        try {
+            const result = await uploadPrescription({
+                image: selectedFile,
+                encounterId: `ENC-${Date.now().toString().slice(-6)}`,
+                patientId: 'PT-AUTO',
+                capturedBy: user?.staff_id || 'unknown',
+            });
 
-      populateVerificationData(result);
+            populateVerificationData(result);
 
-      processingOverlay.classList.add('hidden');
-      verificationView.classList.remove('opacity-0', 'pointer-events-none');
+            processingOverlay.classList.add('hidden');
+            verificationView.classList.remove('opacity-0', 'pointer-events-none');
 
-    } catch (err) {
-      showToast(err.message, 'error');
-      resetUI();
+        } catch (err) {
+            // Distinguish network/timeout errors from server errors
+            const isNetworkError = err.message?.includes('Failed to fetch') ||
+                err.message?.includes('NetworkError') ||
+                err.message?.includes('ECONNRESET') ||
+                err.name === 'TypeError';
+            if (isNetworkError) {
+                showToast('OCR processing timed out or server is busy. Please try again with a smaller image.', 'error');
+            } else {
+                showToast(err.message || 'OCR processing failed', 'error');
+            }
+            resetUI();
+        }
     }
-  }
 
-  function populateVerificationData(result) {
-    // Basic Data
-    document.getElementById('raw-text-view').value = result.raw_text || result.normalized_text || '';
-    document.getElementById('verify-conf-score').textContent = `${(result.confidence_mean || 0).toFixed(0)}%`;
-    document.getElementById('conf-bar-width').style.width = `${(result.confidence_mean || 0)}%`;
+    function populateVerificationData(result) {
+        // Basic Data
+        document.getElementById('raw-text-view').value = result.raw_text || result.normalized_text || '';
+        document.getElementById('verify-conf-score').textContent = `${(result.confidence_mean || 0).toFixed(0)}%`;
+        document.getElementById('conf-bar-width').style.width = `${(result.confidence_mean || 0)}%`;
 
-    // Extract patient name/age from fields if possible
-    const nameField = result.structured_fields?.find(f => f.field_type?.toLowerCase().includes('name'));
-    const ageField = result.structured_fields?.find(f => f.field_type?.toLowerCase().includes('age'));
+        // Extract patient name/age from fields if possible
+        const nameField = result.structured_fields?.find(f => f.field_type?.toLowerCase().includes('name'));
+        const ageField = result.structured_fields?.find(f => f.field_type?.toLowerCase().includes('age'));
 
-    document.getElementById('verify-patient-name').value = nameField?.text || nameField?.value || '';
-    document.getElementById('verify-patient-age').value = ageField?.text || ageField?.value || '';
+        document.getElementById('verify-patient-name').value = nameField?.text || nameField?.value || '';
+        document.getElementById('verify-patient-age').value = ageField?.text || ageField?.value || '';
 
-    // Medication Table
-    const tableBody = document.getElementById('meds-table-body');
-    const meds = result.structured_fields?.filter(f => f.field_type?.toLowerCase().includes('medicine') || f.field_type?.toLowerCase().includes('drug')) || [];
+        // Medication Table
+        const tableBody = document.getElementById('meds-table-body');
+        const meds = result.structured_fields?.filter(f => f.field_type?.toLowerCase().includes('medicine') || f.field_type?.toLowerCase().includes('drug')) || [];
 
-    tableBody.innerHTML = meds.map(m => `
+        tableBody.innerHTML = meds.map(m => `
         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 group">
             <td class="px-4 py-2.5">
                 <input class="w-full bg-transparent border-none p-0 text-xs focus:ring-0 font-bold text-slate-700 dark:text-slate-300" type="text" value="${m.text || m.value}" />
@@ -388,12 +397,12 @@ export async function renderOCRUpload() {
         </tr>
     `).join('');
 
-    // Bounding Boxes (Mocked high-fidelity behavior)
-    if (showAnnotations) renderMockBoundingBoxes();
-  }
+        // Bounding Boxes (Mocked high-fidelity behavior)
+        if (showAnnotations) renderMockBoundingBoxes();
+    }
 
-  function renderMockBoundingBoxes() {
-    boxesOverlay.innerHTML = `
+    function renderMockBoundingBoxes() {
+        boxesOverlay.innerHTML = `
         <div class="bounding-box" style="top: 18%; left: 12%; width: 35%; height: 6%;">
             <span class="bounding-box-label">Patient Name (98%)</span>
         </div>
@@ -404,76 +413,76 @@ export async function renderOCRUpload() {
             <span class="bounding-box-label" style="background: #f59e0b">Review Suggested (45%)</span>
         </div>
     `;
-    boxesOverlay.classList.remove('hidden');
-  }
-
-  // Finalize Actions
-  finalizeBtn.addEventListener('click', () => {
-    finalizeBtn.disabled = true;
-    finalizeBtn.innerHTML = '<span class="material-icons animate-spin text-sm">sync</span> SYNCING...';
-
-    setTimeout(() => {
-      const encId = `ENC-${Math.floor(100000 + Math.random() * 900000)}`;
-      document.getElementById('success-enc-id').textContent = encId;
-      document.getElementById('success-nurse-name').textContent = user ? user.name || user.username : 'Nurse Priya';
-      document.getElementById('success-timestamp').textContent = new Date().toLocaleString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-      });
-
-      verificationView.classList.add('hidden');
-      successState.classList.remove('hidden');
-    }, 1500);
-  });
-
-  resubmitBtn.addEventListener('click', () => {
-    showToast('Editing raw parameters and resubmitting...', 'info');
-    startOCRProcess();
-  });
-
-  cancelBtn.addEventListener('click', resetUI);
-  document.getElementById('success-next-btn').addEventListener('click', () => window.location.reload());
-  document.getElementById('success-dashboard-btn').addEventListener('click', () => window.location.hash = '#/nurse/dashboard');
-
-  function resetUI() {
-    verificationView.classList.add('opacity-0', 'pointer-events-none');
-    processingOverlay.classList.add('hidden');
-    initialView.classList.remove('hidden');
-    fileInput.value = '';
-    selectedFile = null;
-  }
-
-  // Viewer Controls
-  document.getElementById('zoom-in').addEventListener('click', () => {
-    zoomLevel += 0.2;
-    updateZoom();
-  });
-  document.getElementById('zoom-out').addEventListener('click', () => {
-    if (zoomLevel > 0.4) zoomLevel -= 0.2;
-    updateZoom();
-  });
-  document.getElementById('zoom-reset').addEventListener('click', () => {
-    zoomLevel = 1;
-    updateZoom();
-  });
-
-  function updateZoom() {
-    imageContainer.style.transform = `scale(${zoomLevel})`;
-  }
-
-  annoToggle.addEventListener('click', () => {
-    showAnnotations = !showAnnotations;
-    if (showAnnotations) {
-      annoToggle.classList.replace('bg-slate-200', 'bg-primary');
-      annoKnob.classList.replace('translate-x-1', 'translate-x-5');
-      boxesOverlay.classList.remove('hidden');
-    } else {
-      annoToggle.classList.replace('bg-primary', 'bg-slate-200');
-      annoKnob.classList.replace('translate-x-5', 'translate-x-1');
-      boxesOverlay.classList.add('hidden');
+        boxesOverlay.classList.remove('hidden');
     }
-  });
 
-  // Initial state for toggle
-  annoToggle.classList.add('bg-primary');
-  annoKnob.classList.add('translate-x-5');
+    // Finalize Actions
+    finalizeBtn.addEventListener('click', () => {
+        finalizeBtn.disabled = true;
+        finalizeBtn.innerHTML = '<span class="material-icons animate-spin text-sm">sync</span> SYNCING...';
+
+        setTimeout(() => {
+            const encId = `ENC-${Math.floor(100000 + Math.random() * 900000)}`;
+            document.getElementById('success-enc-id').textContent = encId;
+            document.getElementById('success-nurse-name').textContent = user ? user.name || user.username : 'Nurse Priya';
+            document.getElementById('success-timestamp').textContent = new Date().toLocaleString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            verificationView.classList.add('hidden');
+            successState.classList.remove('hidden');
+        }, 1500);
+    });
+
+    resubmitBtn.addEventListener('click', () => {
+        showToast('Editing raw parameters and resubmitting...', 'info');
+        startOCRProcess();
+    });
+
+    cancelBtn.addEventListener('click', resetUI);
+    document.getElementById('success-next-btn').addEventListener('click', () => window.location.reload());
+    document.getElementById('success-dashboard-btn').addEventListener('click', () => window.location.hash = '#/nurse/dashboard');
+
+    function resetUI() {
+        verificationView.classList.add('opacity-0', 'pointer-events-none');
+        processingOverlay.classList.add('hidden');
+        initialView.classList.remove('hidden');
+        fileInput.value = '';
+        selectedFile = null;
+    }
+
+    // Viewer Controls
+    document.getElementById('zoom-in').addEventListener('click', () => {
+        zoomLevel += 0.2;
+        updateZoom();
+    });
+    document.getElementById('zoom-out').addEventListener('click', () => {
+        if (zoomLevel > 0.4) zoomLevel -= 0.2;
+        updateZoom();
+    });
+    document.getElementById('zoom-reset').addEventListener('click', () => {
+        zoomLevel = 1;
+        updateZoom();
+    });
+
+    function updateZoom() {
+        imageContainer.style.transform = `scale(${zoomLevel})`;
+    }
+
+    annoToggle.addEventListener('click', () => {
+        showAnnotations = !showAnnotations;
+        if (showAnnotations) {
+            annoToggle.classList.replace('bg-slate-200', 'bg-primary');
+            annoKnob.classList.replace('translate-x-1', 'translate-x-5');
+            boxesOverlay.classList.remove('hidden');
+        } else {
+            annoToggle.classList.replace('bg-primary', 'bg-slate-200');
+            annoKnob.classList.replace('translate-x-5', 'translate-x-1');
+            boxesOverlay.classList.add('hidden');
+        }
+    });
+
+    // Initial state for toggle
+    annoToggle.classList.add('bg-primary');
+    annoKnob.classList.add('translate-x-5');
 }

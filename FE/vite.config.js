@@ -7,6 +7,7 @@ export default defineConfig({
             '/api': {
                 target: 'http://localhost:8000',
                 changeOrigin: true,
+                timeout: 120000, // 2 min for OCR processing on CPU
             },
             '/health': {
                 target: 'http://localhost:8000',

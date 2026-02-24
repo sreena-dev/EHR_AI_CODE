@@ -28,10 +28,22 @@ export async function uploadPrescription({ image, encounterId, patientId, captur
         // Don't set Content-Type — browser will set multipart boundary
     });
 
-    const data = await res.json();
+    // Safely parse response body (may be empty if server crashed)
+    let data;
+    const text = await res.text();
+    try {
+        data = text ? JSON.parse(text) : null;
+    } catch {
+        // Response body wasn't valid JSON
+        throw new Error('Server returned an invalid response. The OCR service may have crashed — please try again.');
+    }
 
     if (!res.ok) {
-        throw new Error(data.detail || 'OCR processing failed');
+        throw new Error(data?.detail || 'OCR processing failed');
+    }
+
+    if (!data) {
+        throw new Error('Server returned an empty response. Please try again.');
     }
 
     return data;

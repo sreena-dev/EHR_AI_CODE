@@ -40,41 +40,6 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# # Windows-specific Tesseract path fix
-# # Windows-specific Tesseract path fix
-# possible_paths = [
-#     r'C:\Program Files\Tesseract-OCR\tesseract.exe',
-#     # r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-# ]
-
-# tesseract_found = False
-# for p in possible_paths:
-#     logger.info(f"Checking Tesseract path: {p}")
-#     if os.path.exists(p):
-#         # Set tesseract command path
-#         pytesseract.pytesseract.tesseract_cmd = p
-#         logger.info(f"Tesseract found and set to: {p}")
-#         tesseract_found = True
-        
-#         # Add parent directory to PATH to ensure language data is found
-#         tess_dir = str(Path(p).parent)
-#         if tess_dir not in os.environ['PATH']:
-#             os.environ['PATH'] += os.pathsep + tess_dir
-#         break
-        
-# if not tesseract_found:
-#     logger.error(f"Tesseract executable NOT found in: {possible_paths}")
-#     # Fallback: Try to use the first likely path even if logic says it's missing, 
-#     # in case of permission weirdness, or rely on system PATH.
-#     # But we know it exists at the first path, so we can warn.
-# else:
-#     # Verify it works
-#     try:
-#         version = pytesseract.get_tesseract_version()
-#         logger.info(f"Tesseract version validated: {version}")
-#     except Exception as e:
-#         logger.error(f"Tesseract found but failed version check: {e}")
-
 class PrescriptionOCRProcessor:
     """
     Production OCR service with:
@@ -83,6 +48,12 @@ class PrescriptionOCRProcessor:
     - Tamil/English bilingual support
     - Workflow integration with safety gates
     """
+    
+    # Class attributes for static analysis
+    lab_parser: LabReportParser
+    detector: DocumentTypeDetector
+    normalizer: MedicalTextNormalizer
+    paddle_service: Any | None # PaddleOCRService | None
     
     def __init__(
         self,
@@ -118,9 +89,9 @@ class PrescriptionOCRProcessor:
 
     async def process_document(
         self,
-        image_path: Union[str, Path],
+        image_path: str | Path,
         encounter_id: str,
-        workflow: Optional[AIRAWorkflow] = None,
+        workflow: AIRAWorkflow | None = None,
         triggered_by: str = "nurse_station",
         auto_detect_type: bool = True
     ) -> OCRExtractionResult:
@@ -140,31 +111,54 @@ class PrescriptionOCRProcessor:
             preprocessed_img, prep_metadata = preprocessor.preprocess(image_path)
             logger.info(f"Preprocessed: {prep_metadata['original_size']} -> {preprocessed_img.shape[:2]}, ops={prep_metadata['applied_operations']}")
             
-            raw_text = ""
-            confidence = None
-            structured_fields = []
-            ocr_source = "tesseract"
+            raw_text: str = ""
+            confidence: OCRConfidence = OCRConfidence(mean=0.0, min=0.0, low_confidence_words=[])
+            structured_fields: list[Any] = []
+            ocr_source: str = "tesseract"
             
-            # 2. Try PaddleOCR First
+            # 2. Try PaddleOCR First (run in thread to avoid blocking event loop)
             if self.paddle_service:
                 try:
                     logger.info("Attempting PaddleOCR extraction...")
-                    raw_text, confidence = self.paddle_service.extract_text(str(image_path))
+                    raw_text, confidence = await asyncio.to_thread(
+                        self.paddle_service.extract_text, str(image_path)
+                    )
                     ocr_source = "paddle"
+                    logger.info(f"PaddleOCR completed: {len(raw_text)} chars, conf={confidence.mean:.1f}%")
                 except Exception as e:
-                    logger.error(f"PaddleOCR failed: {e}")
+                    logger.error(f"PaddleOCR failed: {e}", exc_info=True)
                     ocr_source = "tesseract_fallback"
             
             # 3. Fallback to Tesseract if Paddle failed or not available
             if not raw_text or ocr_source == "tesseract_fallback":
-                logger.info("Using Tesseract OCR...")
-                ocr_data = cast(Dict[str, Any], pytesseract.image_to_data(
+                logger.info("Using Tesseract OCR (Primary pass: English)...")
+                
+                # FIRST PASS: Strictly English
+                base_config = self.config["config_str"].replace("-l eng+tam", "-l eng").replace("-l tam", "-l eng")
+                ocr_data = cast(dict[str, Any], pytesseract.image_to_data(
                     preprocessed_img,
-                    lang=self.language_mode.value,
-                    config=self.config["config_str"],
+                    lang="eng",
+                    config=base_config,
                     output_type=pytesseract.Output.DICT
                 ))
                 raw_text, confidence = self._build_text_and_confidence(ocr_data)
+                
+                # SECOND PASS: If English confidence is terrible, try bilingual mode
+                if confidence.mean < 40.0 and "tam" in self.language_mode.value:
+                    logger.info("Low English confidence. Retrying Tesseract in Bilingual mode...")
+                    ocr_data_fallback = cast(Dict[str, Any], pytesseract.image_to_data(
+                        preprocessed_img,
+                        lang=self.language_mode.value,
+                        config=self.config["config_str"],
+                        output_type=pytesseract.Output.DICT
+                    ))
+                    raw_text_fallback, confidence_fallback = self._build_text_and_confidence(ocr_data_fallback)
+                    
+                    # Keep the bilingual result only if it's actually an improvement
+                    if confidence_fallback.mean > confidence.mean:
+                        raw_text = raw_text_fallback
+                        confidence = confidence_fallback
+
                 ocr_source = "tesseract"
 
             # 4. Normalize text BEFORE type detection for better classification
@@ -172,8 +166,6 @@ class PrescriptionOCRProcessor:
             logger.info(f"Normalization: {normalization_meta['corrections_made']} corrections applied")
 
             # 5. Document type detection (on normalized text for accuracy)
-            # If we used Paddle, we may have already detected type on raw text;
-            # re-detect on normalized text for better accuracy
             detected_type, type_confidence = self.detector.detect_from_text(normalized_text)
             final_type = detected_type if auto_detect_type else self.document_type
             logger.info(f"Document type: {final_type.value} (confidence={type_confidence:.2f})")
@@ -454,23 +446,25 @@ class PrescriptionOCRProcessor:
         return DocumentMetadata(metadata=metadata)
     
     def _detect_language(self, text: str) -> Literal["en", "ta", "hi", "mixed"]:
-        """Simple language detection"""
+        """Robust language detection with noise thresholds"""
         tamil_chars = len(re.findall(r'[\u0B80-\u0BFF]', text))
         english_chars = len(re.findall(r'[A-Za-z]', text))
+        total_chars = max(len(text.strip()), 1) # Prevent division by zero
         
-        if tamil_chars > english_chars * 2:
-            return "ta"
-        elif english_chars > tamil_chars * 2:
-            return "en"
-        else:
+        # Require minimum number of characters AND at least 10% density to avoid OCR noise
+        if tamil_chars > 5 and (tamil_chars / total_chars) > 0.10:
+            if tamil_chars > english_chars * 1.5:
+                return "ta"
             return "mixed"
+            
+        return "en" # Default to English if Tamil threshold isn't met
     
     def _generate_safety_flags(
         self,
         confidence: OCRConfidence,
         raw_text: str,
         document_type: DocumentType,
-        structured_fields: List
+        structured_fields: list[Any]
     ) -> List[str]:
         """Generate clinical safety flags based on document type and quality"""
         flags = []
@@ -503,8 +497,8 @@ class PrescriptionOCRProcessor:
     
     def _requires_immediate_review(self, result: OCRExtractionResult) -> bool:
         """Determine if document requires immediate human review"""
-        # Always review Tamil documents
-        if result.language_detected == "ta":
+        # FIX: Only review Tamil documents if confidence is also low, not automatically
+        if result.language_detected in ["ta", "mixed"] and result.confidence.mean < 65.0:
             return True
         
         # Review low-confidence critical documents

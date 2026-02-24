@@ -1,12 +1,12 @@
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Literal, Dict, Any, Sequence
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Literal, Any, ClassVar
+from collections.abc import Sequence
 from datetime import datetime, timezone
-import re
 
 class OCRConfidence(BaseModel):
     mean: float = Field(ge=0.0, le=100.0)
     min: float = Field(ge=0.0, le=100.0)
-    low_confidence_words: List[str] = Field(default_factory=list)
+    low_confidence_words: list[str] = Field(default_factory=list)
 
 class PrescriptionField(BaseModel):
     field_type: Literal[
@@ -16,42 +16,42 @@ class PrescriptionField(BaseModel):
     ]
     text: str
     confidence: float = Field(ge=0.0, le=100.0)
-    dosage: Optional[str] = None
-    frequency: Optional[str] = None
-    bounding_box: Optional[List[int]] = None
+    dosage: str | None = None
+    frequency: str | None = None
+    bounding_box: list[int] | None = None
 
 class LabTestField(BaseModel):
     """Structured lab test result field"""
     test_name: str
     result_value: str
-    unit: Optional[str] = None
-    reference_range: Optional[str] = None
-    interpretation: Optional[Literal["High", "Low", "Normal", "Abnormal"]] = None
+    unit: str | None = None
+    reference_range: str | None = None
+    interpretation: Literal["High", "Low", "Normal", "Abnormal"] | None = None
     confidence: float = Field(ge=0.0, le=100.0)
 
 class DocumentMetadata(BaseModel):
     """Document-type-specific metadata"""
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 class OCRExtractionResult(BaseModel):
     encounter_id: str
     original_filename: str
     language_detected: Literal["en", "ta", "hi", "mixed"]
     raw_text: str
-    normalized_text: Optional[str] = Field(default=None, description="Medical-domain normalized text (None if no corrections needed)")
-    structured_fields: Sequence[PrescriptionField | LabTestField]  # Union type
+    normalized_text: str | None = Field(default=None, description="Medical-domain normalized text (None if no corrections needed)")
+    structured_fields: Sequence[PrescriptionField | LabTestField]
     confidence: OCRConfidence
     processing_time_ms: int
-    safety_flags: List[str] = Field(default_factory=list)
+    safety_flags: list[str] = Field(default_factory=list)
     document_type: str = Field(default="prescription")
-    document_metadata: Optional[DocumentMetadata] = None
+    document_metadata: DocumentMetadata | None = None
     type_detection_confidence: float = Field(ge=0.0, le=1.0, default=0.0)
     extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    class Config:
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat()
-        }
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True
+    )
     
     @property
     def requires_doctor_review(self) -> bool:

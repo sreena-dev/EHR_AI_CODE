@@ -1,6 +1,5 @@
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import Any
 import logging
-import os
 from pathlib import Path
 import cv2
 import numpy as np
@@ -9,6 +8,10 @@ from .exceptions import OCRError, OCRErrorCode
 from .medical_text_normalizer import MedicalTextNormalizer
 
 logger = logging.getLogger(__name__)
+
+# Module-level cache for PaddleOCR engines (expensive ~12s init, must persist across instances)
+_PADDLE_ENGINE_CACHE: dict[str, Any] = {}
+_PADDLE_TABLE_ENGINE_CACHE: dict[str, Any] = {}
 
 class PaddleOCRService:
     """
@@ -19,14 +22,20 @@ class PaddleOCRService:
     def __init__(self, lang: str = 'en', use_gpu: bool = False):
         self.lang = lang
         self.use_gpu = use_gpu
-        self._ocr_engine = None
-        self._table_engine = None
+        self._ocr_engine: Any = None
+        self._table_engine: Any = None
         self._normalizer = MedicalTextNormalizer()
         
     @property
-    def ocr_engine(self):
-        """Lazy load OCR engine"""
+    def ocr_engine(self) -> Any:
+        """Lazy load OCR engine with module-level caching"""
         if self._ocr_engine is None:
+            # Check module-level cache first (persists across processor instances)
+            if self.lang in _PADDLE_ENGINE_CACHE:
+                self._ocr_engine = _PADDLE_ENGINE_CACHE[self.lang]
+                logger.debug(f"PaddleOCR engine reused from cache (lang={self.lang})")
+                return self._ocr_engine
+            
             try:
                 try:
                     from paddleocr import PaddleOCR
@@ -50,7 +59,9 @@ class PaddleOCRService:
                     det_db_box_thresh=0.5,
                     det_db_unclip_ratio=1.6
                 )
-                logger.info(f"PaddleOCR engine initialized (lang={self.lang}, device={device})")
+                # Cache engine at module level
+                _PADDLE_ENGINE_CACHE[self.lang] = self._ocr_engine
+                logger.info(f"PaddleOCR engine initialized and cached (lang={self.lang}, device={device})")
             except ImportError:
                 logger.error("PaddleOCR not installed. Run 'pip install paddlepaddle paddleocr'")
                 raise OCRError("PaddleOCR dependency missing", error_code=OCRErrorCode.OCR_ENGINE_FAILURE)
@@ -60,9 +71,16 @@ class PaddleOCRService:
         return self._ocr_engine
 
     @property
-    def table_engine(self):
-        """Lazy load PPStructure engine for table recognition"""
+    def table_engine(self) -> Any:
+        """Lazy load PPStructure engine with module-level caching"""
         if self._table_engine is None:
+            # Check module-level cache first
+            cache_key = f"{self.lang}_table"
+            if cache_key in _PADDLE_TABLE_ENGINE_CACHE:
+                self._table_engine = _PADDLE_TABLE_ENGINE_CACHE[cache_key]
+                logger.debug(f"PPStructure engine reused from cache (lang={self.lang})")
+                return self._table_engine
+            
             try:
                 # PaddleOCR 3.x uses PPStructureV3
                 try:
@@ -85,59 +103,96 @@ class PaddleOCRService:
                     use_doc_orientation_classify=True,
                     enable_mkldnn=False # Disable MKL-DNN here too
                 )
-                logger.info("PPStructure engine initialized")
+                _PADDLE_TABLE_ENGINE_CACHE[cache_key] = self._table_engine
+                logger.info("PPStructure engine initialized and cached")
             except Exception as e:
                 logger.error(f"Failed to initialize PPStructure: {e}")
                 raise OCRError(f"PPStructure init failed: {e}", error_code=OCRErrorCode.OCR_ENGINE_FAILURE)
         return self._table_engine
 
-    def extract_text(self, image_input: Union[str, Path, np.ndarray]) -> Tuple[str, OCRConfidence]:
+    def extract_text(self, image_input: str | Path | np.ndarray) -> tuple[str, OCRConfidence]:
         """
         Extract text from image using PaddleOCR.
+        Handles both PaddleOCR 3.x (predict() -> OCRResult) and legacy (ocr() -> list) formats.
         Returns cleaned text and confidence metrics.
         """
         img_path, img_array = self._prepare_image(image_input)
         
-        # Run OCR
-        result = self.ocr_engine.ocr(img_array)
-        
-        if not result or not result[0]:
-            logger.warning("PaddleOCR found no text")
-            return "", OCRConfidence(mean=0.0, min=0.0)
-            
-        lines = []
-        confidences = []
-        low_conf_words = []
+        lines: list[str] = []
+        confidences: list[float] = []
+        low_conf_words: list[str] = []
         
         try:
-            # v2/v3 Standard format: list of lines [[[box], [text, score]], ...]
-            for line in result[0]:
-                if not line or len(line) < 2:
-                    continue
-                
-                # Extra safety for different Paddle versions
-                if isinstance(line[1], (list, tuple)):
-                    text, score = line[1]
-                elif isinstance(line[1], dict):
-                    text = line[1].get('text', '')
-                    score = line[1].get('confidence', 0.0)
-                else:
-                    continue
-
-                if not text or not text.strip():
-                    continue
+            # PaddleOCR 3.x uses .predict() returning a generator of OCRResult objects
+            if hasattr(self.ocr_engine, 'predict'):
+                logger.info("Using PaddleOCR 3.x predict() API")
+                # Force flush to ensure log appears even if predict() crashes
+                for handler in logger.handlers + logging.getLogger().handlers:
+                    handler.flush()
+                logger.info(f"Calling predict() with input: {img_path} (type: {type(img_path).__name__})")
+                for handler in logger.handlers + logging.getLogger().handlers:
+                    handler.flush()
+                for ocr_result in self.ocr_engine.predict(img_path):
+                    texts: list[str] = []
+                    scores_list: list[float] = []
                     
-                lines.append(text)
-                conf_percent = float(score) * 100
-                confidences.append(conf_percent)
+                    # PaddleOCR 3.x: text data is in .json['res'] dict
+                    if hasattr(ocr_result, 'json') and isinstance(ocr_result.json, dict):
+                        res_data = ocr_result.json.get('res', {})
+                        texts = res_data.get('rec_texts', []) or []
+                        raw_scores = res_data.get('rec_scores', []) or []
+                        scores_list = [float(s) for s in raw_scores]
+                        logger.info(f"PaddleOCR json path: {len(texts)} texts, {len(scores_list)} scores")
+                    # Fallback: try top-level attributes (some versions)
+                    elif hasattr(ocr_result, 'rec_texts') and hasattr(ocr_result, 'rec_scores'):
+                        texts = list(ocr_result.rec_texts or [])
+                        scores_list = [float(s) for s in (ocr_result.rec_scores or [])]
+                        logger.info(f"PaddleOCR attr path: {len(texts)} texts, {len(scores_list)} scores")
+                    else:
+                        logger.warning(f"Unexpected OCRResult type: {type(ocr_result)}, attrs: {[a for a in dir(ocr_result) if not a.startswith('_')]}")
+                    
+                    for text, score in zip(texts, scores_list):
+                        if not text or not str(text).strip():
+                            continue
+                        text_str = str(text).strip()
+                        lines.append(text_str)
+                        conf_percent = score * 100
+                        confidences.append(conf_percent)
+                        if conf_percent < 60:
+                            low_conf_words.append(text_str)
+                    break  # Only process first result (one image)
+            else:
+                # Legacy PaddleOCR 2.x: .ocr() returns list of lists [[[box], [text, score]], ...]
+                logger.info("Using PaddleOCR legacy ocr() API")
+                result = self.ocr_engine.ocr(img_array)
                 
-                if conf_percent < 60:
-                    low_conf_words.append(text)
-                 
+                if result and result[0]:
+                    for line in result[0]:
+                        if not line or len(line) < 2:
+                            continue
+                        if isinstance(line[1], (list, tuple)):
+                            text, score = line[1]
+                        elif isinstance(line[1], dict):
+                            text = line[1].get('text', '')
+                            score = line[1].get('confidence', 0.0)
+                        else:
+                            continue
+                        if not text or not text.strip():
+                            continue
+                        lines.append(text)
+                        conf_percent = float(score) * 100
+                        confidences.append(conf_percent)
+                        if conf_percent < 60:
+                            low_conf_words.append(text)
+                            
         except Exception as e:
-            logger.error(f"Error parsing PaddleOCR result: {e}")
-            
-        full_text = "\n".join(lines)
+            logger.error(f"Error during PaddleOCR extraction: {e}", exc_info=True)
+
+        if not lines:
+            logger.warning("PaddleOCR found no text")
+            return "", OCRConfidence(mean=0.0, min=0.0)
+        
+        logger.info(f"PaddleOCR extracted {len(lines)} text lines")
         
         # Apply per-line medical normalization
         normalized_lines = [self._normalizer.normalize_line(line) for line in lines]
@@ -151,29 +206,22 @@ class PaddleOCRService:
         
         return full_text, confidence
 
-    def extract_lab_results(self, image_input: Union[str, Path, np.ndarray]) -> List[LabTestField]:
+    def extract_lab_results(self, image_input: str | Path | np.ndarray) -> list[LabTestField]:
         """
         Extract structured lab results using PPStructure table recognition.
         """
-        # from paddleocr import save_structure_res # Unused and causes import error
-        
         img_path, img_array = self._prepare_image(image_input)
         
         # Run structure analysis
         results = self.table_engine(img_array)
         
-        lab_fields = []
+        lab_fields: list[LabTestField] = []
         
         for region in results:
             if region['type'] == 'table':
                 # Region contains a table
-                # 'res' key contains the html structure or cell list
-                # For direct usage, we can look at the HTML or the cell boxes
-                # PPStructure returns 'html' representation of the table
                 html_table = region.get('res', {}).get('html', '')
                 
-                # We can also parse the raw text cells if available, but HTML is easier
-                # to parse with libraries like BeautifulSoup or pandas
                 if html_table:
                     table_fields = self._parse_table_html(html_table)
                     lab_fields.extend(table_fields)
@@ -184,7 +232,7 @@ class PaddleOCRService:
             
         return lab_fields
 
-    def _parse_table_html(self, html: str) -> List[LabTestField]:
+    def _parse_table_html(self, html: str) -> list[LabTestField]:
         """
         Parse HTML table returned by PPStructure into LabTestFields.
         Uses simple heuristics to identify columns.
@@ -193,16 +241,15 @@ class PaddleOCRService:
         soup = BeautifulSoup(html, 'html.parser')
         
         rows = soup.find_all('tr')
-        fields = []
+        fields: list[LabTestField] = []
         
         # Try to identify headers
-        headers = []
+        headers: list[str] = []
         if rows:
             header_cells = rows[0].find_all(['th', 'td'])
             headers = [c.get_text(strip=True).lower() for c in header_cells]
             
         # Map columns to expected fields
-        # Common headers: Test Name, Result, Unit, Reference Range
         col_map = {
             'name': -1, 'test': -1, 'investigation': -1,
             'result': -1, 'value': -1, 'observation': -1,
@@ -241,7 +288,7 @@ class PaddleOCRService:
                 ref_range = cells[ref_idx].get_text(strip=True) if ref_idx != -1 and ref_idx < len(cells) else None
                 
                 # Basic interpretation
-                interpretation = None
+                interpretation: Any = None
                 if 'high' in val_text.lower() or '↑' in val_text:
                     interpretation = "High"
                     val_text = val_text.replace('↑', '').strip()
@@ -263,7 +310,7 @@ class PaddleOCRService:
                 
         return fields
 
-    def _prepare_image(self, image_input: Union[str, Path, np.ndarray]) -> Tuple[str, np.ndarray]:
+    def _prepare_image(self, image_input: str | Path | np.ndarray) -> tuple[str, np.ndarray]:
         """Convert input to safe path and numpy array"""
         if isinstance(image_input, (str, Path)):
             path = str(image_input)

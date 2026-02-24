@@ -1,9 +1,4 @@
-"""
-Document type detection and classification for clinical documents.
-Supports prescriptions, lab reports, and mixed documents.
-"""
 from enum import Enum
-from typing import List, Tuple
 import re
 
 class DocumentType(Enum):
@@ -24,7 +19,7 @@ class DocumentTypeDetector:
     
     # Prescription indicators (medication-focused)
     # Removed ambiguous keywords (mg, ml, patient, date) that also appear in lab reports
-    PRESCRIPTION_KEYWORDS = [
+    PRESCRIPTION_KEYWORDS: list[str] = [
         r'\btab\b', r'\bcap\b', r'\bsyr\b', r'\binj\b', r'\btablet\b', r'\bcapsule\b',
         r'\bsyrup\b', r'\binjection\b',
         r'\bod\b', r'\bbd\b', r'\btds\b', r'\bqds\b', r'\bsos\b', r'\bdaily\b',
@@ -34,7 +29,7 @@ class DocumentTypeDetector:
     ]
     
     # Lab report indicators — OCR-tolerant patterns
-    LAB_REPORT_KEYWORDS = [
+    LAB_REPORT_KEYWORDS: list[str] = [
         r'\btest\b', r'\bresult\b', r'\bvalue\b', r'\breference\b', r'\brange\b',
         r'\bnormal\b', r'\babnormal\b', r'\bpositive\b', r'\bnegative\b',
         r'\bh[ae]+moglobin\b', r'\bhba\s*1?\s*c\b', r'\bgl[uo]cose\b', r'\bcreatinine\b',
@@ -46,7 +41,7 @@ class DocumentTypeDetector:
     ]
     
     # Strong lab indicators — definitive signals worth 3× weight
-    STRONG_LAB_INDICATORS = [
+    STRONG_LAB_INDICATORS: list[str] = [
         r'\bgl[uo]cose\b', r'\bcho?lesterol\b', r'\bcreatinine\b',
         r'\bh[ae]+moglobin\b', r'\bhba\s*1?\s*c\b', r'\btriglycerides\b',
         r'\bpathology\b', r'\bbiochemistry\b', r'\bhaematology\b', r'\bhematology\b',
@@ -57,7 +52,7 @@ class DocumentTypeDetector:
     ]
     
     # Table indicators (strong lab report signal)
-    TABLE_INDICATORS = [
+    TABLE_INDICATORS: list[str] = [
         r'\|.*\|',  # Pipe-delimited tables
         r'[0-9]+\.[0-9]+\s+[0-9]+\.[0-9]+',  # Numeric columns
         r'\bmg/dl\b', r'\bmmol/l\b', r'\bg/l\b',  # Lab units
@@ -70,7 +65,7 @@ class DocumentTypeDetector:
         re.IGNORECASE
     )
     
-    def detect_from_text(self, text: str, confidence_threshold: float = 0.6) -> Tuple[DocumentType, float]:
+    def detect_from_text(self, text: str, confidence_threshold: float = 0.6) -> tuple[DocumentType, float]:
         """
         Detect document type from extracted text.
         Returns: (document_type, confidence_score)
@@ -132,9 +127,9 @@ class DocumentTypeDetector:
         """
         return DocumentType.UNKNOWN
     
-    def get_expected_fields(self, document_type: DocumentType) -> List[str]:
+    def get_expected_fields(self, document_type: DocumentType) -> list[str]:
         """Return expected clinical fields for document type"""
-        fields = {
+        fields: dict[DocumentType, list[str]] = {
             DocumentType.PRESCRIPTION: [
                 "patient_name", "doctor_name", "medications", "dosage", 
                 "frequency", "duration", "diagnosis"

@@ -1,12 +1,9 @@
-"""
-Document-type-aware image preprocessing.
-Optimized pipelines for prescriptions vs lab reports.
-"""
 import cv2
 import numpy as np
 from pathlib import Path
-from typing import Union, Tuple, Dict
+from typing import Any
 import logging
+
 
 from .document_types import DocumentType
 
@@ -26,7 +23,7 @@ class ImagePreprocessor:
         self.enable_tamil_optimizations = enable_tamil_optimizations
         logger.debug(f"Preprocessor initialized: type={document_type.value}, tamil={enable_tamil_optimizations}")
     
-    def preprocess(self, image_path: Union[str, Path]) -> Tuple[np.ndarray, Dict]:
+    def preprocess(self, image_path: str | Path) -> tuple[np.ndarray, dict[str, Any]]:
         """Document-type-aware preprocessing pipeline"""
         image_path = Path(image_path)
         if not image_path.exists():
@@ -55,7 +52,7 @@ class ImagePreprocessor:
         
         return img, metadata
     
-    def _common_preprocessing(self, img: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict]:
+    def _common_preprocessing(self, img: np.ndarray, metadata: dict[str, Any]) -> tuple[np.ndarray, dict[str, Any]]:
         """Steps common to all document types"""
         # 1. Convert to grayscale
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -80,7 +77,7 @@ class ImagePreprocessor:
         
         return img, metadata
     
-    def _prescription_preprocessing(self, img: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict]:
+    def _prescription_preprocessing(self, img: np.ndarray, metadata: dict[str, Any]) -> tuple[np.ndarray, dict[str, Any]]:
         """Prescription-optimized pipeline (text clarity focus)"""
         # Multi-scale adaptive thresholding to handle uneven lighting and thin pencil marks
         # Step 1: Gentle blur to reduce high-frequency noise before thresholding
@@ -110,7 +107,7 @@ class ImagePreprocessor:
         
         return img, metadata
     
-    def _lab_report_preprocessing(self, img: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict]:
+    def _lab_report_preprocessing(self, img: np.ndarray, metadata: dict[str, Any]) -> tuple[np.ndarray, dict[str, Any]]:
         """Lab report-optimized pipeline (table preservation focus)"""
         # 1. Sharpen to enhance table lines
         kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
