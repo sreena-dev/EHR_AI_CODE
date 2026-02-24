@@ -48,3 +48,69 @@ export async function uploadPrescription({ image, encounterId, patientId, captur
 
     return data;
 }
+
+/**
+ * Fetch dashboard stats (encounters + counts) for the nurse dashboard
+ * @returns {Promise<{encounters: Array, counts: {total, pending_ocr, requires_review, completed}}>}
+ */
+export async function fetchDashboardStats() {
+    const res = await authFetch('/api/nurse/dashboard-stats');
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to load dashboard stats');
+    }
+
+    return res.json();
+}
+
+/**
+ * Fetch patient queue data (patients + counts)
+ * @returns {Promise<{patients: Array, counts: {total, waiting, in_progress, completed}}>}
+ */
+export async function fetchQueueStats() {
+    const res = await authFetch('/api/nurse/queue-stats');
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to load queue data');
+    }
+
+    return res.json();
+}
+
+/**
+ * Search patient registry by name, ID, or phone
+ * @param {string} query
+ * @returns {Promise<{patients: Array}>}
+ */
+export async function searchPatients(query = '') {
+    const res = await authFetch(`/api/nurse/patients/search?q=${encodeURIComponent(query)}`);
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Patient search failed');
+    }
+
+    return res.json();
+}
+
+/**
+ * Register a new patient
+ * @param {{name:string, age:number, gender:string, phone:string, address:string}} data
+ * @returns {Promise<{patient: Object, message: string}>}
+ */
+export async function registerPatient(data) {
+    const res = await authFetch('/api/nurse/patients/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Patient registration failed');
+    }
+
+    return res.json();
+}
