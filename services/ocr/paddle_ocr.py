@@ -44,7 +44,11 @@ class PaddleOCRService:
                     use_textline_orientation=True, 
                     lang=self.lang, 
                     device=device,
-                    enable_mkldnn=False # Disable MKL-DNN to prevent onednn_instruction crash
+                    enable_mkldnn=False, # Disable MKL-DNN to prevent onednn_instruction crash
+                    # Tuning detection for better coverage of small clinical text
+                    det_db_thresh=0.3,
+                    det_db_box_thresh=0.5,
+                    det_db_unclip_ratio=1.6
                 )
                 logger.info(f"PaddleOCR engine initialized (lang={self.lang}, device={device})")
             except ImportError:
@@ -95,78 +99,40 @@ class PaddleOCRService:
         img_path, img_array = self._prepare_image(image_input)
         
         # Run OCR
-        # cls=True is removed as it's not supported in v3 predict(), 
-        # use_textline_orientation=True in __init__ handles it.
         result = self.ocr_engine.ocr(img_array)
         
-        # Debug logging for v3 structure
-        logger.info(f"PaddleOCR raw result type: {type(result)}")
-        if result:
-            logger.info(f"First item type: {type(result[0])}")
-            logger.info(f"First item preview: {str(result[0])[:200]}")
-            
-        if not result:
+        if not result or not result[0]:
             logger.warning("PaddleOCR found no text")
             return "", OCRConfidence(mean=0.0, min=0.0)
             
-        # Parse result based on structure
-        # v3 result is likely a list of dicts or objects
-        # usage: res['dt_polys'], res['rec_text'], res['rec_score']
-        # whereas v2 was list of lines [[box, (text, score)], ...]
-        
         lines = []
         confidences = []
         low_conf_words = []
         
-        # Helper to parse v3 dict result
-        if isinstance(result[0], dict):
-             # Handle list of dicts (one per text box? or one per image?)
-             # Usually paddleocr v3 pipeline returns list of results (one per image).
-             # If we passed single image, result[0] is the result for that image.
-             # Inside result[0], we look for text lines.
-             # result[0] might be a dict with 'dt_polys', 'rec_text', 'rec_score' keys as LISTS?
-             # Or result[0] is just one text line?
-             # Let's assume result is [ {rec_text:..., rec_score:...}, ... ] ?
-             # Actually PaddleX pipeline output for OCR is usually a global dict or list of dicts.
-             pass
-        
-        # For now, let's try to adapt to whatever it is, 
-        # but safely return empty if we can't parse, so we can see the log.
         try:
-            # Try v2 format first (list of lists)
-            if isinstance(result[0], list):
-                 for line in result[0]:
+            # v2/v3 Standard format: list of lines [[[box], [text, score]], ...]
+            for line in result[0]:
+                if not line or len(line) < 2:
+                    continue
+                
+                # Extra safety for different Paddle versions
+                if isinstance(line[1], (list, tuple)):
                     text, score = line[1]
-                    if not text.strip():
-                        continue
-                        
-                    lines.append(text)
-                    conf_percent = score * 100
-                    confidences.append(conf_percent)
+                elif isinstance(line[1], dict):
+                    text = line[1].get('text', '')
+                    score = line[1].get('confidence', 0.0)
+                else:
+                    continue
+
+                if not text or not text.strip():
+                    continue
                     
-                    if conf_percent < 60:
-                        low_conf_words.append(text)
-            # Try v3 format (list of dicts or object with attributes)
-            elif isinstance(result[0], dict):
-                # If it's a list of dicts, iterate
-                for item in result:
-                    if 'rec_text' in item and 'rec_score' in item:
-                        text = item['rec_text']
-                        score = item['rec_score']
-                        # Handle if score is already float or needs parsing
-                        if text:
-                            lines.append(text)
-                            confidences.append(float(score) * 100 if score else 0)
-                            if score and float(score) < 0.6:
-                                low_conf_words.append(text)
-                    elif 'text' in item and 'confidence' in item: # Alternative key
-                        text = item['text']
-                        score = item['confidence']
-                        lines.append(text)
-                        confidences.append(float(score) * 100)
-            # If it's a customized object, we might need __dict__ or attributes
-            else:
-                 logger.warning(f"Unknown PaddleOCR result format: {type(result[0])}")
+                lines.append(text)
+                conf_percent = float(score) * 100
+                confidences.append(conf_percent)
+                
+                if conf_percent < 60:
+                    low_conf_words.append(text)
                  
         except Exception as e:
             logger.error(f"Error parsing PaddleOCR result: {e}")
