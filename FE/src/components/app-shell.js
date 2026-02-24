@@ -9,6 +9,7 @@ const NURSE_NAV = [
   { icon: 'dashboard', label: 'Dashboard', path: '/nurse/dashboard' },
   { icon: 'groups', label: 'Patient Queue', path: '/nurse/queue' },
   { icon: 'document_scanner', label: 'OCR Upload', path: '/nurse/ocr' },
+  { icon: 'insights', label: 'Disease Tracking', path: '/nurse/tracking' },
 ];
 
 const DOCTOR_NAV = [
@@ -17,9 +18,7 @@ const DOCTOR_NAV = [
   { icon: 'groups', label: 'Patient Queue', path: '/doctor/queue' },
   { icon: 'mic', label: 'Consultation', path: '/doctor/consultation' },
   { icon: 'video_call', label: 'Live Consultation', path: '/doctor/live-consultation' },
-  { icon: 'verified', label: 'Note Verification', path: '/doctor/note-verification' },
-  { icon: 'help_outline', label: 'Clarification', path: '/doctor/clarification' },
-  { icon: 'person', label: 'Profile', path: '/doctor/profile' },
+  { icon: 'insights', label: 'Disease Tracking', path: '/doctor/tracking' },
 ];
 
 const ADMIN_NAV = [
@@ -74,13 +73,13 @@ export function renderAppShell(pageTitle, bodyHTML, activePath) {
         </nav>
 
         <div class="sidebar-footer">
-          <div class="sidebar-user" id="user-menu">
-            <div class="sidebar-avatar">${initials}</div>
+          <div class="sidebar-user hover:bg-slate-800 transition-all cursor-pointer p-3 rounded-xl mx-2 mb-2" id="user-menu">
+            <div class="sidebar-avatar shadow-lg shadow-primary/20">${initials}</div>
             <div class="sidebar-user-info">
               <div class="sidebar-user-name">${user?.full_name || user?.staff_id || 'User'}</div>
-              <div class="sidebar-user-role">${role}</div>
+              <div class="sidebar-user-role capitalize">${role}</div>
             </div>
-            <span class="material-icons-outlined" style="font-size:18px; color: var(--gray-500)">logout</span>
+            <span class="material-icons-outlined text-slate-500 group-hover:text-primary transition-colors" style="font-size:18px">chevron_right</span>
           </div>
         </div>
       </aside>
@@ -99,18 +98,16 @@ export function renderAppShell(pageTitle, bodyHTML, activePath) {
           </div>
         </header>
 
-        <div class="page-content" id="page-content" style="height: calc(100vh - var(--header-height)); overflow: hidden;">
+        <div class="page-content" id="page-content" style="height: calc(100vh - var(--header-height)); overflow-y: auto;">
           ${bodyHTML}
         </div>
       </main>
     </div>
   `;
 
-  // Logout handler
+  // Profile navigation handler
   document.getElementById('user-menu')?.addEventListener('click', () => {
-    if (confirm('Are you sure you want to log out?')) {
-      logout();
-      navigate('/login');
-    }
+    const role = getCurrentUser()?.role || 'nurse';
+    navigate(`/${role}/profile`);
   });
 }
