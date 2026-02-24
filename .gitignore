@@ -61,3 +61,4 @@ dist-ssr
 *.sw?
 report.xml
 .model_cache/
+*.txt
