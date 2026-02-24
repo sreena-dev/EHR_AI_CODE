@@ -16,6 +16,8 @@ class PrescriptionField(BaseModel):
     ]
     text: str
     confidence: float = Field(ge=0.0, le=100.0)
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
     bounding_box: Optional[List[int]] = None
 
 class LabTestField(BaseModel):
