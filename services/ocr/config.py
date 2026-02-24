@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Any, ClassVar
 from enum import Enum
 
 
@@ -19,7 +19,7 @@ class OCRConfig:
     # Language-specific configs
     # NOTE: Do NOT include -l flag in config_str — pytesseract passes it
     # separately via the lang= parameter. Including it here causes duplicates.
-    LANGUAGE_CONFIGS: Dict[str, Dict] = {
+    LANGUAGE_CONFIGS: ClassVar[dict[str, dict[str, Any]]] = {
         "eng": {
             "oem": 1,  # LSTM only
             "psm": 6,  # Assume single uniform block of text
@@ -32,7 +32,18 @@ class OCRConfig:
                           # Tamil-specific: Enable character merging for conjuncts
                           + r" -c tessedit_char_blacklist=|[]{}()<>;:"
         },
+        "hin": {
+            "oem": 1,
+            "psm": 6,
+            "config_str": r"--oem 1 --psm 6 -c preserve_interword_spaces=1"
+        },
         "eng+tam": {
+            "oem": 1,
+            "psm": 6,
+            "config_str": r"--oem 1 --psm 6 -c preserve_interword_spaces=1"
+                          + r" -c tessedit_char_blacklist=|[]{}()<>;:"
+        },
+        "eng+hin": {
             "oem": 1,
             "psm": 6,
             "config_str": r"--oem 1 --psm 6 -c preserve_interword_spaces=1"
@@ -40,7 +51,7 @@ class OCRConfig:
     }
 
     # Tamil-specific preprocessing recommendations
-    TAMIL_PREPROCESSING = {
+    TAMIL_PREPROCESSING: ClassVar[dict[str, Any]] = {
         "denoise": True,  # Critical for Tamil script clarity
         "binarize": True,  # Improves character separation
         "deskew": True,  # Tamil documents often skewed in clinics
@@ -48,7 +59,7 @@ class OCRConfig:
     }
 
     @classmethod
-    def get_config(cls, language_mode: LanguageMode) -> Dict:
+    def get_config(cls, language_mode: LanguageMode) -> dict[str, Any]:
         """Get optimized Tesseract config for language"""
         key = language_mode.value
         # Look up full key first (e.g. "eng+tam"), then fall back to base language
@@ -56,17 +67,6 @@ class OCRConfig:
             return cls.LANGUAGE_CONFIGS[key].copy()
         
         base = cls.LANGUAGE_CONFIGS.get(key.split('+')[0], cls.LANGUAGE_CONFIGS["eng"]).copy()
-
-        # For bilingual modes not explicitly defined, add the -l flag
-        if '+' in key:
-            if f"-l " not in base["config_str"]:
-                base["config_str"] += f" -l {key}"
-            else:
-                base["config_str"] = base["config_str"].replace(
-                    f"-l {key.split('+')[0]}",
-                    f"-l {key}"
-                )
-
         return base
 
     @classmethod
