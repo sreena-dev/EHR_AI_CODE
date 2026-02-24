@@ -1,6 +1,6 @@
 from typing import List, Optional
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class OCRErrorCode(Enum):
@@ -229,7 +229,7 @@ async def ocr_exception_handler(request: Request, exc: OCRError) -> JSONResponse
     3. Integrates with HIPAA audit trail
     """
     # Set timestamp for audit
-    exc.timestamp = datetime.utcnow()
+    exc.timestamp = datetime.now(timezone.utc)
 
     # Log PHI-safe error (NEVER log raw clinical text)
     logger.error(
@@ -267,7 +267,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "detail": "Request validation failed",
             "error_code": "VALIDATION_ERROR",
             "invalid_fields": invalid_fields[:5],  # Limit exposure
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 

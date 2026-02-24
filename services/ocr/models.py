@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Literal, Dict, Any, Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 class OCRConfidence(BaseModel):
@@ -46,7 +46,7 @@ class OCRExtractionResult(BaseModel):
     document_type: str = Field(default="prescription")
     document_metadata: Optional[DocumentMetadata] = None
     type_detection_confidence: float = Field(ge=0.0, le=1.0, default=0.0)
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     class Config:
         json_encoders = {

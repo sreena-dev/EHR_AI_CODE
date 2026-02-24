@@ -6,7 +6,7 @@ import pytesseract
 from pathlib import Path
 from typing import Union, Optional, List, Dict, Any, cast, Literal
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import re
 import os
@@ -128,7 +128,7 @@ class PrescriptionOCRProcessor:
         End-to-end OCR processing with document type awareness.
         Uses PaddleOCR as primary engine, falls back to Tesseract.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         image_path = Path(image_path)
         
         try:
@@ -222,7 +222,7 @@ class PrescriptionOCRProcessor:
                 normalized_text=normalized_text if normalization_meta["corrections_made"] > 0 else None,
                 structured_fields=structured_fields,
                 confidence=confidence,
-                processing_time_ms=int((datetime.utcnow() - start_time).total_seconds() * 1000),
+                processing_time_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
                 safety_flags=safety_flags,
                 document_type=final_type.value,
                 document_metadata=document_metadata,
