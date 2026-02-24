@@ -325,39 +325,73 @@ class PrescriptionOCRProcessor:
         )
     
     def _extract_prescription_fields(self, text: str) -> List[PrescriptionField]:
-        """Rule-based prescription field extraction"""
+        """
+        Sophisticated keyword-first prescription field extraction.
+        Scans for medications from the dictionary and extracts context (dosage/freq).
+        """
         fields = []
+        lines = text.split('\n')
         
-        # Medication patterns
-        med_patterns: List[tuple[str, Literal["MEDICATION", "Dosage"]]] = [
-            (r'(?:tab|tablet|capsule|cap|syrup|syr|inj|injection)[.\s]+([A-Za-z0-9\s]+?)(?:\s+(?:[0-9]+mg|[0-9]+mcg|[0-9]+ml))', "MEDICATION"),
-            (r'([A-Za-z\s]+?)\s+(?:[0-9]+mg|[0-9]+mcg)\s+(?:bd|tds|od|daily|sos)', "MEDICATION"),
-        ]
-        
-        for pattern, field_type in med_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
+        # Get common medications from normalizer (lowercase)
+        from .medical_text_normalizer import get_normalizer
+        normalizer = get_normalizer()
+        med_dict = {k.lower(): v for k, v in normalizer.MEDICAL_TERMS.items() 
+                    if v not in ["Tablet", "Capsule", "Syrup", "Injection", "Ointment", "Drops", "Dosage", "Frequency", "Duration", "Diagnosis", "Prescription"]}
+
+        # Common clinical patterns
+        dosage_pattern = r'(\d+\.?\d*\s*(?:mg|mcg|ml|g|tab|cap|pill|syr|tsp|unit|IU)\b)'
+        freq_pattern = r'\b(OD|BD|TDS|TID|QID|STAT|SOS|HS|AC|PC|AT NIGHT|DAILY|TWICE DAILY|THRICE DAILY)\b'
+        duration_pattern = r'\b(\d+\s*(?:day|week|month|year)s?)\b'
+
+        for line in lines:
+            line_lower = line.lower()
+            found_med = None
+            
+            # Step 1: Scan for known medication names
+            # Sort by length descending to catch multi-word meds first
+            sorted_meds = sorted(med_dict.keys(), key=len, reverse=True)
+            for med_key in sorted_meds:
+                if f" {med_key} " in f" {line_lower} " or line_lower.startswith(f"{med_key} "):
+                    found_med = med_dict[med_key]
+                    break
+            
+            if found_med:
+                # Step 2: Extract dosage and frequency from the SAME line
+                dosage_match = re.search(dosage_pattern, line, re.IGNORECASE)
+                freq_match = re.search(freq_pattern, line, re.IGNORECASE)
+                
+                # If no standard frequency found, check for numeric patterns like 1-0-1
+                freq = freq_match.group(0) if freq_match else ""
+                if not freq:
+                    numeric_freq_match = re.search(r'\b([01]-[01]-[01])\b', line)
+                    if numeric_freq_match:
+                        # Map to standard if possible
+                        nfreq = numeric_freq_match.group(1)
+                        if nfreq == "1-0-1": freq = "BD"
+                        elif nfreq == "1-1-1": freq = "TDS"
+                        elif nfreq == "1-0-0": freq = "OD (Morn)"
+                        elif nfreq == "0-0-1": freq = "OD (Night)"
+                        else: freq = nfreq
+
                 fields.append(PrescriptionField(
-                    field_type=cast(Any, field_type), # Cast to satisfy strict typing if needed, or rely on the List hint
-                    text=match.group(1).strip(),
-                    confidence=85.0
+                    field_type="MEDICATION",
+                    text=found_med,
+                    confidence=95.0,
+                    dosage=dosage_match.group(1) if dosage_match else None,
+                    frequency=freq if freq else None
                 ))
-        
-        # Diagnosis patterns
-        diag_patterns: List[tuple[str, Literal["DIAGNOSIS", "SYMPTOM"]]] = [
-            (r'(?:diagnosis|dx|provisional diagnosis)[:\s]+([A-Za-z0-9\s,]+)', "DIAGNOSIS"),
-            (r'(?:complaint|c/o)[:\s]+([A-Za-z0-9\s,]+)', "SYMPTOM"),
-        ]
-        
-        for pattern, field_type in diag_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                fields.append(PrescriptionField(
-                    field_type=cast(Any, field_type),
-                    text=match.group(1).strip(),
-                    confidence=80.0
-                ))
-        
+            
+            # Step 3: Scan for Diagnosis/Symptoms (Secondary focus)
+            diag_match = re.search(r'(?:diagnosis|dx|provisional diagnosis|c/o|complaint)[:\s]+([A-Za-z0-9\s,]+)', line, re.IGNORECASE)
+            if diag_match:
+                content = diag_match.group(1).strip()
+                if content:
+                    fields.append(PrescriptionField(
+                        field_type="DIAGNOSIS" if "diag" in line_lower or "dx" in line_lower else "SYMPTOM",
+                        text=content,
+                        confidence=85.0
+                    ))
+
         return fields
     
     def _extract_lab_report_fields(self, text: str) -> List[LabTestField]:
