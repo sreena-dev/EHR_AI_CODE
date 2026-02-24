@@ -1,14 +1,29 @@
 /**
  * Nurse Dashboard — Matches Stitch "Nurse Clinical Dashboard" design
+ * Fetches live stats from GET /api/nurse/dashboard-stats
  */
 import { renderAppShell } from '../components/app-shell.js';
 import { getCurrentUser } from '../api/auth.js';
-import { navigate } from '../router.js';
+import { fetchDashboardStats } from '../api/nurse.js';
+
+/* ── Status → badge class mapping ── */
+const BADGE_MAP = {
+  'Completed': 'badge-success',
+  'Pending OCR': 'badge-warning',
+  'Requires Review': 'badge-error',
+};
+
+/* ── Status → document type badge ── */
+const TYPE_BADGE = {
+  'Prescription OCR': 'badge-primary',
+  'Lab Report': 'badge-info',
+};
 
 export async function renderNurseDashboard() {
   const user = getCurrentUser();
   const name = user?.full_name || user?.staff_id || 'Nurse';
 
+  /* ── Render shell with loading skeleton first ── */
   const bodyHTML = `
     <!-- Greeting -->
     <div style="margin-bottom: 24px;">
@@ -16,41 +31,41 @@ export async function renderNurseDashboard() {
       <p class="text-muted">Here's the current status of your assigned patients and pending tasks.</p>
     </div>
 
-    <!-- Stats Grid -->
+    <!-- Stats Grid (values filled by JS) -->
     <div class="stats-grid">
-      <div class="stat-card" id="card-total" style="cursor:pointer;">
+      <div class="stat-card active" id="card-total" style="cursor:pointer;" data-filter="all">
         <div class="stat-icon blue">
           <span class="material-icons-outlined">people</span>
         </div>
         <div>
-          <div class="stat-value">12</div>
+          <div class="stat-value" id="val-total"><span class="spinner"></span></div>
           <div class="stat-label">Total Patients Today</div>
         </div>
       </div>
-      <div class="stat-card" id="card-ocr" style="cursor:pointer;">
+      <div class="stat-card" id="card-ocr" style="cursor:pointer;" data-filter="Pending OCR">
         <div class="stat-icon orange">
           <span class="material-icons-outlined">document_scanner</span>
         </div>
         <div>
-          <div class="stat-value">3</div>
+          <div class="stat-value" id="val-ocr"><span class="spinner"></span></div>
           <div class="stat-label">Pending OCR Scans</div>
         </div>
       </div>
-      <div class="stat-card" id="card-review" style="cursor:pointer;">
+      <div class="stat-card" id="card-review" style="cursor:pointer;" data-filter="Requires Review">
         <div class="stat-icon red">
           <span class="material-icons-outlined">rate_review</span>
         </div>
         <div>
-          <div class="stat-value">1</div>
+          <div class="stat-value" id="val-review"><span class="spinner"></span></div>
           <div class="stat-label">Requires Manual Review</div>
         </div>
       </div>
-      <div class="stat-card" id="card-completed" style="cursor:pointer;">
+      <div class="stat-card" id="card-completed" style="cursor:pointer;" data-filter="Completed">
         <div class="stat-icon green">
           <span class="material-icons-outlined">check_circle</span>
         </div>
         <div>
-          <div class="stat-value">8</div>
+          <div class="stat-value" id="val-completed"><span class="spinner"></span></div>
           <div class="stat-label">Completed Today</div>
         </div>
       </div>
@@ -71,13 +86,15 @@ export async function renderNurseDashboard() {
         Add Vitals
       </a>
     </div>
+
     <!-- Recent Encounters Table -->
     <div class="card">
-      <div class="card-header">
-        <h3 style="font-size:1rem;">
+      <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:1rem; margin:0;">
           <span class="material-icons-outlined" style="font-size:20px; vertical-align:middle;">history</span>
           Recent Encounters
         </h3>
+        <span id="filter-label" class="badge badge-neutral" style="font-size:0.75rem;">All</span>
       </div>
       <div class="table-wrapper">
         <table class="data-table">
@@ -91,33 +108,10 @@ export async function renderNurseDashboard() {
             </tr>
           </thead>
           <tbody id="encounters-body">
-            <tr data-status="Completed">
-              <td><strong>ENC-2026-001</strong></td>
-              <td>Priya Sharma</td>
-              <td><span class="badge badge-primary">Prescription OCR</span></td>
-              <td><span class="badge badge-success">Completed</span></td>
-              <td class="text-muted text-sm">10:30 AM</td>
-            </tr>
-            <tr data-status="Pending Review">
-              <td><strong>ENC-2026-002</strong></td>
-              <td>Rajesh Kumar</td>
-              <td><span class="badge badge-info">Lab Report</span></td>
-              <td><span class="badge badge-warning">Pending Review</span></td>
-              <td class="text-muted text-sm">11:15 AM</td>
-            </tr>
-            <tr data-status="Completed">
-              <td><strong>ENC-2026-003</strong></td>
-              <td>Meena Devi</td>
-              <td><span class="badge badge-primary">Prescription OCR</span></td>
-              <td><span class="badge badge-success">Completed</span></td>
-              <td class="text-muted text-sm">11:45 AM</td>
-            </tr>
-            <tr data-status="Low Confidence">
-              <td><strong>ENC-2026-004</strong></td>
-              <td>Arjun Patel</td>
-              <td><span class="badge badge-primary">Prescription OCR</span></td>
-              <td><span class="badge badge-error">Low Confidence</span></td>
-              <td class="text-muted text-sm">12:00 PM</td>
+            <tr>
+              <td colspan="5" style="text-align:center; padding:32px; color:var(--gray-400);">
+                <span class="spinner" style="margin-right:8px;"></span> Loading encounters…
+              </td>
             </tr>
           </tbody>
         </table>
@@ -127,30 +121,93 @@ export async function renderNurseDashboard() {
 
   renderAppShell('Clinical Dashboard', bodyHTML, '/nurse/dashboard');
 
-  // Interaction Logic
-  const encountersBody = document.getElementById('encounters-body');
-  const rows = encountersBody.querySelectorAll('tr');
+  /* ── Fetch data from backend ── */
+  let encounters = [];
+  let counts = { total: 0, pending_ocr: 0, requires_review: 0, completed: 0 };
 
-  const filterTable = (status) => {
-    rows.forEach(row => {
-      if (status === 'all') {
-        row.style.display = '';
+  try {
+    const data = await fetchDashboardStats();
+    encounters = data.encounters || [];
+    counts = data.counts || counts;
+  } catch (err) {
+    console.error('Dashboard stats error:', err);
+    document.getElementById('encounters-body').innerHTML = `
+      <tr><td colspan="5" style="text-align:center; padding:24px; color:var(--error);">
+        <span class="material-icons-outlined" style="font-size:20px;vertical-align:middle;">error</span>
+        Failed to load dashboard data — ${err.message}
+      </td></tr>`;
+  }
+
+  /* ── Populate stat card values ── */
+  document.getElementById('val-total').textContent = counts.total;
+  document.getElementById('val-ocr').textContent = counts.pending_ocr;
+  document.getElementById('val-review').textContent = counts.requires_review;
+  document.getElementById('val-completed').textContent = counts.completed;
+
+  /* ── Render encounters into table ── */
+  const tbody = document.getElementById('encounters-body');
+
+  function renderTable(filter) {
+    const filtered = filter === 'all'
+      ? encounters
+      : encounters.filter(e => e.status === filter);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="5" style="text-align:center; padding:24px; color:var(--gray-400);">
+          No encounters match the selected filter.
+        </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(e => `
+      <tr data-status="${e.status}">
+        <td><strong>${e.id}</strong></td>
+        <td>${e.patient_name}</td>
+        <td><span class="badge ${TYPE_BADGE[e.type] || 'badge-neutral'}">${e.type}</span></td>
+        <td><span class="badge ${BADGE_MAP[e.status] || 'badge-neutral'}">${e.status}</span></td>
+        <td class="text-muted text-sm">${e.time}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Initial render — show all
+  renderTable('all');
+
+  /* ── Card click → filter table ── */
+  let activeFilter = 'all';
+  const cards = document.querySelectorAll('.stat-card[data-filter]');
+  const filterLabel = document.getElementById('filter-label');
+
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      const filter = card.dataset.filter;
+
+      // Toggle: clicking same card again resets to 'all'
+      if (activeFilter === filter && filter !== 'all') {
+        activeFilter = 'all';
       } else {
-        row.style.display = row.dataset.status === status ? '' : 'none';
+        activeFilter = filter;
       }
-    });
-    // Scroll to table
-    document.querySelector('.card:last-child').scrollIntoView({ behavior: 'smooth' });
-  };
 
-  document.getElementById('card-total')?.addEventListener('click', () => {
-    navigate('/nurse/queue');
+      // Update active styling
+      cards.forEach(c => c.classList.remove('active'));
+      if (activeFilter === 'all') {
+        document.getElementById('card-total').classList.add('active');
+        filterLabel.textContent = 'All';
+        filterLabel.className = 'badge badge-neutral';
+      } else {
+        card.classList.add('active');
+        filterLabel.textContent = activeFilter;
+        filterLabel.className = `badge ${BADGE_MAP[activeFilter] || 'badge-neutral'}`;
+      }
+
+      renderTable(activeFilter);
+
+      // Smooth scroll to the table
+      document.querySelector('.card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   });
-  document.getElementById('card-ocr')?.addEventListener('click', () => {
-    navigate('/nurse/ocr');
-  });
-  document.getElementById('card-review')?.addEventListener('click', () => filterTable('Low Confidence'));
-  document.getElementById('card-completed')?.addEventListener('click', () => filterTable('Completed'));
 }
 
 function getGreeting() {
