@@ -5,7 +5,7 @@ Generates structured SOAP notes from transcript + OCR/NLP data.
 import logging
 import json
 from typing import Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .models import ClinicalNote, NoteSection
 from .templates import SOAP_TEMPLATE
@@ -71,7 +71,7 @@ class ClinicalNoteGenerator:
         4. Block hallucinated diagnoses/medications
         5. Return draft for doctor verification
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         
         # Build clinical context
         context = self._build_context(
