@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Union
 
 class TranscriptSegment(BaseModel):
     start: float
@@ -14,15 +14,17 @@ class LanguageConfidence(BaseModel):
 
 class SpeakerSegment(BaseModel):
     speaker_id: str
+    speaker_role: Optional[str] = None
     start: float
     end: float
+    text: str
 
 class TranscriptionResult(BaseModel):
     encounter_id: str
     audio_duration_sec: float
     language: str
     language_confidence: float
-    segments: List[TranscriptSegment]
+    segments: List[Union[TranscriptSegment, SpeakerSegment]]
     full_transcript: str
     processing_time_ms: int
     model_version: str

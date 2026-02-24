@@ -188,7 +188,7 @@ class ClinicalTranscriber:
                 language_confidence=lang_conf.probability,
                 segments=transcript_segments,
                 full_transcript=" ".join([s.text for s in transcript_segments]),
-                processing_time_ms=int((datetime.utcnow() - start_time).total_seconds() * 1000),
+                processing_time_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
                 model_version=f"faster-whisper-{self.model_size}",
                 safety_flags=safety_flags,
                 requires_verification=self._requires_verification(lang_conf, safety_flags)
