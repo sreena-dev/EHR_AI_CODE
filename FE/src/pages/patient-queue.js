@@ -62,6 +62,10 @@ export async function renderPatientQueue() {
         <p class="text-muted text-sm">Manage patients waiting for consultation</p>
       </div>
       <div style="display:flex; gap:12px; align-items:center;">
+        <button class="btn btn-primary" id="new-encounter-btn" style="height: 42px;">
+          <span class="material-icons-outlined" style="font-size: 18px;">add</span>
+          New Encounter
+        </button>
         <button class="btn btn-secondary" id="export-queue-btn" style="height: 42px;">
           <span class="material-icons-outlined" style="font-size: 18px;">download</span>
           Export Queue
@@ -245,6 +249,93 @@ export async function renderPatientQueue() {
       </p>
     </div>
 
+    <!-- New Patient Encounter Modal -->
+    <div id="new-encounter-modal" class="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" style="display: none;">
+      <div class="bg-white dark:bg-card-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center" style="flex-shrink: 0;">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Additional Patient Details</h2>
+            <p class="text-slate-500 dark:text-slate-400 mt-1">Enter patient details to start consultation</p>
+          </div>
+          <span class="close-modal text-3xl cursor-pointer hover:text-slate-600" id="close-new-encounter-modal">&times;</span>
+        </div>
+        <div class="flex-1 overflow-y-auto custom-scrollbar px-8 py-6 space-y-8">
+          <section>
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Patient Identification</h3>
+            <div class="grid grid-cols-1 gap-6">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Patient ID <span class="text-red-500">*</span>
+                </label>
+                <div class="relative group">
+                  <input class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[#2463eb] font-bold focus:ring-2 focus:ring-[#2463eb]/50 focus:border-[#2463eb] transition-all pr-12" placeholder="Format: PID-XXXXX" type="text" value="PID-9822"/>
+                  <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                    <span class="material-icons text-green-500">check_circle</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Patient Search</label>
+                <div class="relative">
+                  <span class="material-icons absolute left-4 top-3.5 text-slate-400">search</span>
+                  <input class="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#2463eb]/50" placeholder="Search by name, ID or phone..." type="text"/>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Encounter Details</h3>
+            <div class="space-y-6">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Chief Complaint</label>
+                <textarea id="chief-complaint-textarea" class="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#2463eb]/50" placeholder="Describe symptoms..." rows="3"></textarea>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400 rounded-full cursor-pointer hover:bg-[#2463eb]/10 hover:text-[#2463eb] transition-colors border border-slate-200 dark:border-slate-700 symptom-tag" data-symptom="Fever">+ Fever</span>
+                  <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400 rounded-full cursor-pointer hover:bg-[#2463eb]/10 hover:text-[#2463eb] transition-colors border border-slate-200 dark:border-slate-700 symptom-tag" data-symptom="Cough">+ Cough</span>
+                  <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400 rounded-full cursor-pointer hover:bg-[#2463eb]/10 hover:text-[#2463eb] transition-colors border border-slate-200 dark:border-slate-700 symptom-tag" data-symptom="Headache">+ Headache</span>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Language</label>
+                  <select class="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#2463eb]/50">
+                    <option>English</option>
+                    <option>Tamil</option>
+                    <option>Hindi</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Visit Type</label>
+                  <select class="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#2463eb]/50">
+                    <option>Standard Consult</option>
+                    <option>Follow-up</option>
+                    <option>Emergency</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex gap-3">
+            <span class="material-icons text-red-500">warning</span>
+            <p class="text-sm font-medium text-red-800 dark:text-red-300">
+              Tamil patients require manual verification before EMR save
+            </p>
+          </div>
+        </div>
+        <div class="px-8 py-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-4 sticky bottom-0" style="flex-shrink: 0;">
+          <button class="px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors" id="cancel-new-encounter-btn">
+            Cancel
+          </button>
+          <button class="px-8 py-3 bg-[#2463eb] hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2" id="save-new-encounter-btn">
+            <span>Save & Proceed</span>
+            <span class="material-icons text-[18px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- Data Export Modal -->
     <div id="export-modal" class="modal" style="display: none;">
       <div class="modal-content" style="max-width: 460px;">
@@ -418,5 +509,51 @@ export async function renderPatientQueue() {
   document.getElementById('close-export-modal')?.addEventListener('click', () => {
     clearInterval(exportInterval);
     exportModal.style.display = 'none';
+  });
+
+  // New Encounter Modal Logic
+  const newEncounterModal = document.getElementById('new-encounter-modal');
+  const newEncounterBtn = document.getElementById('new-encounter-btn');
+  const closeNewEncounterModal = document.getElementById('close-new-encounter-modal');
+  const cancelNewEncounterBtn = document.getElementById('cancel-new-encounter-btn');
+  const saveNewEncounterBtn = document.getElementById('save-new-encounter-btn');
+
+  newEncounterBtn?.addEventListener('click', () => {
+    newEncounterModal.style.display = 'flex';
+  });
+
+  const hideNewEncounterModal = () => {
+    newEncounterModal.style.display = 'none';
+  };
+
+  closeNewEncounterModal?.addEventListener('click', hideNewEncounterModal);
+  cancelNewEncounterBtn?.addEventListener('click', hideNewEncounterModal);
+
+  saveNewEncounterBtn?.addEventListener('click', () => {
+    // For now, just pretend it's saved and go to consultation
+    hideNewEncounterModal();
+    const user = getCurrentUser();
+    if (user?.role === 'doctor') {
+      location.hash = '#/doctor/consultation';
+    } else {
+      location.hash = '#/nurse/ocr';
+    }
+  });
+
+  // Symptom Tag Logic
+  const chiefComplaintArea = newEncounterModal.querySelector('textarea');
+  newEncounterModal.querySelectorAll('.symptom-tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      const symptom = tag.getAttribute('data-symptom');
+      const currentVal = chiefComplaintArea.value.trim();
+      if (currentVal) {
+        chiefComplaintArea.value = currentVal + ', ' + symptom;
+      } else {
+        chiefComplaintArea.value = symptom;
+      }
+      // Visual feedback
+      tag.classList.add('bg-primary/20', 'text-primary');
+      setTimeout(() => tag.classList.remove('bg-primary/20', 'text-primary'), 200);
+    });
   });
 }

@@ -57,17 +57,24 @@ export async function renderNurseDashboard() {
     </div>
 
     <!-- Quick Actions -->
-    <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
-      <a href="#/nurse/ocr" class="btn btn-primary">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px; max-width: 800px;">
+      <a href="#/nurse/ocr" class="btn btn-primary" style="height: 48px;">
         <span class="material-icons-outlined" style="font-size:18px">add_photo_alternate</span>
         Upload Prescription
       </a>
-      <a href="#/nurse/queue" class="btn btn-secondary">
+      <a href="#/nurse/queue" class="btn btn-secondary" style="height: 48px;">
         <span class="material-icons-outlined" style="font-size:18px">groups</span>
         View Patient Queue
       </a>
+      <a href="#/nurse/vitals" class="btn btn-primary" style="height: 48px;">
+        <span class="material-icons-outlined" style="font-size:18px">monitor_heart</span>
+        Add Vitals
+      </a>
+      <a href="#/nurse/tracking" class="btn btn-secondary" style="height: 48px;">
+        <span class="material-icons-outlined" style="font-size:18px">insights</span>
+        Disease Tracking
+      </a>
     </div>
-
     <!-- Recent Encounters Table -->
     <div class="card">
       <div class="card-header">

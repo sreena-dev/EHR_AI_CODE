@@ -12,46 +12,40 @@ export async function renderConsultation() {
 
   const bodyHTML = `
     <div style="max-width:1000px;">
-      <div style="margin-bottom:24px;">
-        <h2>Consultation & AI Transcription</h2>
-        <p class="text-muted">Upload consultation audio to transcribe, then generate and verify clinical notes.</p>
-      </div>
-
       <!-- Step Indicator -->
-      <div style="display:flex; gap:4px; margin-bottom:24px;">
-        <div class="step-pill active" id="step1-indicator">
-          <span>1</span> Audio Upload
+      <div style="display:flex; gap:4px; margin-bottom:16px;">
+        <div class="step-pill active" id="step1-indicator" style="padding: 6px 10px;">
+          <span>1</span> Audio
         </div>
-        <div class="step-pill" id="step2-indicator">
-          <span>2</span> Transcript Review
+        <div class="step-pill" id="step2-indicator" style="padding: 6px 10px;">
+          <span>2</span> Review
         </div>
-        <div class="step-pill" id="step3-indicator">
-          <span>3</span> Clinical Note
+        <div class="step-pill" id="step3-indicator" style="padding: 6px 10px;">
+          <span>3</span> Note
         </div>
-        <div class="step-pill" id="step4-indicator">
-          <span>4</span> Verify & Save
+        <div class="step-pill" id="step4-indicator" style="padding: 6px 10px;">
+          <span>4</span> Save
         </div>
       </div>
 
       <!-- Encounter Info -->
-      <div class="card" style="margin-bottom:20px;">
-        <div class="card-body">
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-body" style="padding: 12px 16px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
             <div class="form-group">
-              <label class="form-label">Encounter ID *</label>
-              <input type="text" id="consult-encounter" class="form-input" placeholder="ENC-2026-001" required />
+              <label class="form-label text-xs">Encounter ID *</label>
+              <input type="text" id="consult-encounter" class="form-input btn-sm" placeholder="ENC-2026-001" required />
             </div>
             <div class="form-group">
-              <label class="form-label">Patient ID *</label>
-              <input type="text" id="consult-patient" class="form-input" placeholder="PT-789" required />
+              <label class="form-label text-xs">Patient ID *</label>
+              <input type="text" id="consult-patient" class="form-input btn-sm" placeholder="PT-789" required />
             </div>
             <div class="form-group">
-              <label class="form-label">Language</label>
-              <select id="consult-language" class="form-select">
+              <label class="form-label text-xs">Language</label>
+              <select id="consult-language" class="form-select btn-sm">
                 <option value="">Auto Detect</option>
                 <option value="en">English</option>
                 <option value="ta">Tamil</option>
-                <option value="hi">Hindi</option>
               </select>
             </div>
           </div>

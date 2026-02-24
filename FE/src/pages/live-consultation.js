@@ -19,7 +19,7 @@ export async function renderLiveConsultation() {
   const bodyHTML = `
     <style>
       /* ===== Consultation Page — Exact Stitch Replica ===== */
-      .consult-page { display: flex; flex-direction: column; height: calc(100vh - 56px); overflow: hidden; background: #f6f6f8; }
+      .consult-page { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #f6f6f8; }
 
       /* --- Top Header: Patient Info + Audio Controls --- */
       .consult-header {
