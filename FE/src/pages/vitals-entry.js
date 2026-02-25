@@ -215,6 +215,23 @@ export async function renderVitalsEntry() {
         </div>
       </div>
 
+      <!-- Saved Vitals for This Patient -->
+      <div id="saved-vitals-section" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <span class="material-icons text-[#2463eb] text-lg">assignment_turned_in</span>
+            <h3 class="font-bold text-sm text-slate-800">Saved Vitals for This Session</h3>
+          </div>
+          <span id="saved-vitals-count" class="px-2 py-0.5 bg-blue-50 text-[#2463eb] rounded-md text-[10px] font-bold uppercase">0 recorded</span>
+        </div>
+        <div id="saved-vitals-list" class="divide-y divide-slate-50">
+          <div class="px-6 py-8 text-center">
+            <span class="material-icons text-slate-200 text-3xl block mb-2">inventory_2</span>
+            <p class="text-slate-400 text-xs font-medium">No vitals saved yet for this patient</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Offline/Sync Footer -->
       <div class="flex items-center justify-center gap-2 py-6">
          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
@@ -226,7 +243,7 @@ export async function renderVitalsEntry() {
         <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <button id="vitals-cancel" class="px-6 py-2 text-slate-500 font-bold text-xs hover:text-slate-800 transition-colors uppercase tracking-wider">Cancel</button>
           <div class="flex gap-3">
-             <button id="vitals-save-another" class="hidden md:flex items-center gap-2 px-6 py-2 bg-slate-50 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-100 transition-all border border-slate-200/50 uppercase tracking-wider">
+             <button id="vitals-save-another" class="flex items-center gap-2 px-6 py-2 bg-slate-50 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-100 transition-all border border-slate-200/50 uppercase tracking-wider">
                Save & Add Another
              </button>
              <button id="vitals-save" class="px-8 py-2 bg-[#2463eb] text-white rounded-lg font-bold text-xs shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all disabled:opacity-30 disabled:grayscale uppercase tracking-wider">
@@ -272,6 +289,69 @@ export async function renderVitalsEntry() {
 
   const refreshUI = () => {
     renderVitalsEntry();
+  };
+
+  // ── Vitals localStorage helpers ──
+  const getVitalsKey = (patientId) => `vitals_${patientId}`;
+
+  const loadSavedVitals = (patientId) => {
+    try {
+      return JSON.parse(localStorage.getItem(getVitalsKey(patientId)) || '[]');
+    } catch { return []; }
+  };
+
+  const saveSavedVitals = (patientId, vitals) => {
+    localStorage.setItem(getVitalsKey(patientId), JSON.stringify(vitals));
+  };
+
+  const renderSavedVitals = () => {
+    const listEl = document.getElementById('saved-vitals-list');
+    const countEl = document.getElementById('saved-vitals-count');
+    if (!listEl || !selectedPatient) return;
+
+    const saved = loadSavedVitals(selectedPatient.id);
+    countEl.textContent = `${saved.length} recorded`;
+
+    if (saved.length === 0) {
+      listEl.innerHTML = `
+        <div class="px-6 py-8 text-center">
+          <span class="material-icons text-slate-200 text-3xl block mb-2">inventory_2</span>
+          <p class="text-slate-400 text-xs font-medium">No vitals saved yet for this patient</p>
+        </div>`;
+      return;
+    }
+
+    listEl.innerHTML = saved.map((v, i) => `
+      <div class="flex items-center gap-4 px-6 py-3 hover:bg-slate-50/50 transition-colors group" data-vital-idx="${i}">
+        <div class="w-9 h-9 rounded-lg bg-blue-50 text-[#2463eb] flex items-center justify-center flex-shrink-0 border border-blue-100/50">
+          <span class="material-icons text-base">${v.icon || 'monitor_heart'}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm text-slate-800">${v.label}</span>
+            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${v.encounterId || '—'}</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">${v.timestamp} · ${selectedPatient.name}</p>
+        </div>
+        <span class="font-bold text-base text-slate-900">${v.value} <span class="text-xs text-slate-400 font-medium">${v.unit || ''}</span></span>
+        <button class="delete-saved-vital opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all" data-idx="${i}">
+          <span class="material-icons text-base">close</span>
+        </button>
+      </div>
+    `).join('');
+
+    // Delete handlers
+    listEl.querySelectorAll('.delete-saved-vital').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.idx);
+        const vitals = loadSavedVitals(selectedPatient.id);
+        vitals.splice(idx, 1);
+        saveSavedVitals(selectedPatient.id, vitals);
+        renderSavedVitals();
+        window.showToast?.('Vital removed', 'info');
+      });
+    });
   };
 
   const setupStepLogic = () => {
@@ -589,15 +669,82 @@ export async function renderVitalsEntry() {
         }
       });
 
-      saveBtn?.addEventListener('click', () => {
-        if (!activeVital) return;
+      const collectVitalValue = () => {
+        if (!activeVital) return null;
+        let value = '', unit = '';
+        if (activeVital === 'BP') {
+          const sys = document.getElementById('bp-systolic')?.value;
+          const dia = document.getElementById('bp-diastolic')?.value;
+          if (!sys || !dia) return null;
+          value = `${sys}/${dia}`;
+          unit = 'mmHg';
+        } else if (activeVital === 'Temp') {
+          const temp = document.getElementById('temp-value')?.value;
+          if (!temp) return null;
+          value = temp;
+          unit = '°C';
+        } else {
+          const input = formContainer.querySelector('input[type="number"]');
+          if (!input?.value) return null;
+          value = input.value;
+          const unitMap = { SpO2: '%', HR: 'bpm', Resp: '/min', Weight: 'kg', Height: 'cm' };
+          unit = unitMap[activeVital] || '';
+        }
+        return {
+          type: activeVital,
+          label: vitalsData[activeVital].label,
+          icon: vitalsData[activeVital].icon,
+          value, unit,
+          encounterId: `ENC-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
+          patientId: selectedPatient.id,
+          patientName: selectedPatient.name,
+          timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        };
+      };
+
+      const doSave = (redirectAfter) => {
+        const entry = collectVitalValue();
+        if (!entry) {
+          window.showToast?.('Please enter a value first', 'error');
+          return;
+        }
         saveBtn.innerHTML = '<span class="material-icons animate-spin text-[20px]">sync</span> Saving...';
         saveBtn.disabled = true;
+
         setTimeout(() => {
-          window.showToast?.(`${vitalsData[activeVital].label} saved for ${selectedPatient.name}`, 'success');
-          location.hash = '#/nurse/dashboard';
-        }, 1000);
-      });
+          // Persist to localStorage
+          const existing = loadSavedVitals(selectedPatient.id);
+          existing.push(entry);
+          saveSavedVitals(selectedPatient.id, existing);
+
+          window.showToast?.(`${entry.label} (${entry.value} ${entry.unit}) saved for ${selectedPatient.name}`, 'success');
+
+          if (redirectAfter) {
+            location.hash = '#/nurse/dashboard';
+          } else {
+            // Reset form for another entry
+            activeVital = null;
+            formContainer.innerHTML = `
+              <div id="form-placeholder" class="bg-white border-2 border-dashed border-slate-100 rounded-3xl p-12 text-center">
+                <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span class="material-symbols-outlined text-3xl text-slate-300">pulse</span>
+                </div>
+                <p class="text-slate-900 font-bold text-base">Select another vital to record</p>
+                <p class="text-slate-400 text-xs mt-1">Use the quick buttons or search above</p>
+              </div>`;
+            saveBtn.innerHTML = 'Save Vital Sign';
+            saveBtn.disabled = true;
+            renderSavedVitals();
+          }
+        }, 800);
+      };
+
+      saveBtn?.addEventListener('click', () => doSave(true));
+
+      document.getElementById('vitals-save-another')?.addEventListener('click', () => doSave(false));
+
+      // Render saved vitals on load
+      renderSavedVitals();
 
       document.getElementById('vitals-cancel')?.addEventListener('click', () => {
         location.hash = '#/nurse/dashboard';
