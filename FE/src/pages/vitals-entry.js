@@ -717,6 +717,21 @@ export async function renderVitalsEntry() {
           existing.push(entry);
           saveSavedVitals(selectedPatient.id, existing);
 
+          // Also save as an encounter for dashboard sync
+          try {
+            const encs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
+            const nextNum = (encs.length + 1).toString().padStart(3, '0');
+            encs.push({
+              id: `VIT-${new Date().getFullYear()}-${nextNum}`,
+              patient_name: selectedPatient.name,
+              type: 'Vitals Entry',
+              status: 'Completed',
+              time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              patient_id: selectedPatient.id,
+            });
+            localStorage.setItem('ocr_encounters', JSON.stringify(encs));
+          } catch (e) { /* silent */ }
+
           window.showToast?.(`${entry.label} (${entry.value} ${entry.unit}) saved for ${selectedPatient.name}`, 'success');
 
           if (redirectAfter) {
