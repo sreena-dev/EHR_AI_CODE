@@ -22,43 +22,6 @@ export async function renderOCRUpload() {
             background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%232563EB' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
         }
 
-        /* ── Annotation chips ── */
-        .anno-sidebar {
-            position: absolute; top: 12px; left: 12px; z-index: 15;
-            display: flex; flex-direction: column; gap: 6px;
-            max-height: calc(100% - 24px); overflow-y: auto;
-            pointer-events: auto;
-        }
-        .anno-chip {
-            display: flex; align-items: center; gap: 8px;
-            padding: 8px 12px; background: white; border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md); border-left: 3px solid var(--primary-500);
-            cursor: pointer; transition: all 0.2s; font-size: 0.75rem;
-            white-space: nowrap; min-width: 160px;
-        }
-        .anno-chip:hover { transform: translateX(4px); box-shadow: var(--shadow-lg); }
-        .anno-chip.active { background: var(--primary-50); border-left-color: var(--primary-500); }
-        .anno-chip .anno-icon { font-size: 16px; flex-shrink: 0; }
-        .anno-chip .anno-info { flex: 1; }
-        .anno-chip .anno-type { font-weight: 700; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-700); }
-        .anno-chip .anno-text { font-size: 0.7rem; color: var(--gray-500); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
-        .anno-chip .anno-conf {
-            font-size: 0.6rem; font-weight: 800; padding: 2px 6px;
-            border-radius: var(--radius-full); flex-shrink: 0;
-        }
-        .anno-chip .conf-high { background: #dcfce7; color: #166534; }
-        .anno-chip .conf-mid  { background: #fef3c7; color: #92400e; }
-        .anno-chip .conf-low  { background: #fee2e2; color: #991b1b; }
-        .anno-chip.conf-border-high { border-left-color: var(--success); }
-        .anno-chip.conf-border-mid  { border-left-color: #f59e0b; }
-        .anno-chip.conf-border-low  { border-left-color: var(--error); }
-
-        /* Highlight effect on verification field */
-        .verify-input.field-highlight, .meds-table.field-highlight {
-            border-color: var(--primary-500) !important;
-            box-shadow: 0 0 0 3px var(--primary-100), 0 0 12px rgba(36,99,235,0.15) !important;
-            transition: all 0.3s ease;
-        }
 
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
@@ -168,55 +131,149 @@ export async function renderOCRUpload() {
         .selected-patient-banner .details .name { font-weight: 700; font-size: 0.9rem; }
         .selected-patient-banner .details .meta { font-size: 0.75rem; color: var(--gray-600); }
 
-        /* ── Verification panel ── */
-        .verify-section { display: flex; flex: 1; overflow: hidden; }
-        .viewer-panel {
-            flex: 1; position: relative; background: var(--gray-100);
-            border-right: 1px solid var(--gray-200); display: flex; flex-direction: column;
-            overflow: hidden;
+        /* ── Full-Width Verification Layout ── */
+        .verify-section {
+            display: flex; flex-direction: column; height: 100%; overflow: hidden;
         }
-        .viewer-toolbar {
-            position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
-            background: white; box-shadow: var(--shadow-lg); border-radius: var(--radius-full);
-            padding: 8px 16px; display: flex; align-items: center; gap: 16px;
-            border: 1px solid var(--gray-200);
+
+        /* Verification Form — full width */
+        .verify-form-panel {
+            display: flex; flex-direction: column; overflow: hidden; background: white; flex: 1;
         }
-        .viewer-toolbar label {
-            font-size: 0.625rem; font-weight: 700; text-transform: uppercase;
+        .verify-topbar {
+            display: flex; align-items: center; gap: 12px; padding: 10px 24px;
+            background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+            flex-shrink: 0;
+        }
+        .verify-topbar .patient-ctx {
+            display: flex; align-items: center; gap: 8px; font-size: 0.8rem;
+            font-weight: 600; color: var(--gray-700); flex: 1;
+        }
+        .verify-topbar .patient-ctx .material-icons { font-size: 18px; color: var(--primary-500); }
+        .verify-topbar .conf-badge {
+            display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+            background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-full);
+            font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--gray-500);
+        }
+        .verify-topbar .conf-badge .conf-dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+        }
+        .verify-topbar .compare-trigger {
+            display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+            background: var(--primary-50); border: 1px solid var(--primary-200);
+            border-radius: var(--radius-md); cursor: pointer; font-size: 0.68rem;
+            font-weight: 700; color: var(--primary-600); transition: all 0.15s;
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .verify-topbar .compare-trigger:hover { background: var(--primary-100); border-color: var(--primary-300); }
+        .verify-topbar .compare-trigger .material-icons { font-size: 16px; }
+
+        .verify-form-scroll { flex: 1; overflow-y: auto; padding: 20px 28px; }
+
+        /* ── Compare Overlay (full-viewport modal) ── */
+        .compare-overlay {
+            position: fixed; inset: 0; z-index: 200; display: none;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+        }
+        .compare-overlay.open { display: flex; align-items: stretch; justify-content: center; }
+        .compare-container {
+            width: 96vw; height: 94vh; margin: auto; display: grid;
+            grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr;
+            background: white; border-radius: var(--radius-xl);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3); overflow: hidden;
+        }
+        .compare-header {
+            grid-column: 1 / -1; display: flex; align-items: center;
+            justify-content: space-between; padding: 14px 24px;
+            background: var(--gray-50); border-bottom: 1px solid var(--gray-200);
+        }
+        .compare-header h3 { margin: 0; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .compare-close {
+            background: none; border: none; cursor: pointer; color: var(--gray-400);
+            padding: 6px; border-radius: var(--radius-sm); transition: all 0.15s;
+        }
+        .compare-close:hover { color: var(--gray-700); background: var(--gray-100); }
+        .compare-pane {
+            overflow: auto; display: flex; flex-direction: column;
+        }
+        .compare-pane-label {
+            padding: 8px 16px; font-size: 0.6rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.12em; color: var(--gray-400);
+            background: var(--gray-50); border-bottom: 1px solid var(--gray-100);
+            display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+        }
+        .compare-pane-label .material-icons { font-size: 14px; }
+        .compare-img-wrap {
+            flex: 1; display: flex; align-items: flex-start; justify-content: center;
+            padding: 20px; overflow: auto; background: var(--gray-100);
+        }
+        .compare-img-wrap img {
+            max-width: 100%; height: auto; border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg); transform-origin: top center;
+            transition: transform 0.2s ease;
+        }
+        .compare-zoom-bar {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 8px; background: white;
+            border-top: 1px solid var(--gray-100); flex-shrink: 0;
+        }
+        .compare-zoom-bar button {
+            background: none; border: none; cursor: pointer; color: var(--gray-500);
+            padding: 4px; border-radius: var(--radius-sm); transition: all 0.15s;
+        }
+        .compare-zoom-bar button:hover { color: var(--primary-500); background: var(--primary-50); }
+        .compare-zoom-bar .zoom-level {
+            font-size: 0.6rem; font-weight: 700; color: var(--gray-400);
+            min-width: 32px; text-align: center;
+        }
+        .compare-text-pane {
+            flex: 1; padding: 16px; overflow: auto;
+            border-left: 1px solid var(--gray-200);
+        }
+        .compare-text-pane textarea {
+            width: 100%; height: 100%; min-height: 300px; font-size: 0.82rem;
+            font-family: 'JetBrains Mono', monospace; background: white;
+            border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+            padding: 16px; color: var(--gray-700); resize: none; line-height: 1.8;
+        }
+        .compare-text-pane textarea:focus {
+            outline: none; border-color: var(--primary-400);
+            box-shadow: 0 0 0 3px var(--primary-100);
+        }
+        .compare-text-actions {
+            padding: 10px 16px; display: flex; justify-content: flex-end; gap: 8px;
+            background: var(--gray-50); border-top: 1px solid var(--gray-100);
+            border-left: 1px solid var(--gray-200); flex-shrink: 0;
+        }
+
+        /* ── Editable Extracted Text (inline) ── */
+        .extracted-text-section {
+            margin-bottom: 18px; border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md); overflow: hidden;
+        }
+        .extracted-text-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .extracted-text-header .label {
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
             letter-spacing: 0.1em; color: var(--gray-500);
+            display: flex; align-items: center; gap: 6px;
         }
-        .viewer-viewport {
-            flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center;
-            padding: 32px; position: relative;
+        .extracted-text-header .label .material-icons { font-size: 15px; color: var(--primary-400); }
+        .extracted-text-header .edit-hint {
+            font-size: 0.6rem; color: var(--gray-400); font-style: italic;
         }
-        .image-wrap {
-            position: relative; box-shadow: var(--shadow-xl); border-radius: var(--radius-md);
-            overflow: hidden; background: white; transform-origin: center; transition: transform 0.2s;
+        .extracted-text-body textarea {
+            width: 100%; height: 100px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;
+            background: white; border: none; padding: 12px 14px; color: var(--gray-700);
+            resize: vertical; line-height: 1.7;
         }
-        .image-wrap img { max-width: 100%; height: auto; display: block; }
-        .page-indicator {
-            position: absolute; bottom: 16px; left: 16px;
-            background: rgba(0,0,0,0.7); color: white; font-size: 0.625rem;
-            font-weight: 700; padding: 6px 12px; border-radius: var(--radius-full);
-            text-transform: uppercase; letter-spacing: 0.1em;
+        .extracted-text-body textarea:focus {
+            outline: none; background: var(--primary-50);
         }
-
-        .data-panel {
-            width: 500px; background: white; display: flex; flex-direction: column;
-            border-left: 1px solid var(--gray-100); box-shadow: var(--shadow-xl); z-index: 20;
-        }
-        .verify-warning {
-            background: #fffbeb; border-bottom: 1px solid #fde68a;
-            padding: 16px; display: flex; gap: 12px; align-items: flex-start; flex-shrink: 0;
-        }
-        .verify-warning .material-icons { color: #f59e0b; }
-        .verify-warning h3 {
-            font-size: 0.625rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.12em; color: #92400e; margin: 0;
-        }
-        .verify-warning p { font-size: 0.625rem; color: #a16207; margin: 4px 0 0; line-height: 1.5; }
-
-        .verify-content { flex: 1; overflow-y: auto; padding: 24px; }
 
         .field-label {
             font-size: 0.625rem; font-weight: 700; text-transform: uppercase;
@@ -232,47 +289,79 @@ export async function renderOCRUpload() {
             outline: none; border-color: var(--primary-500);
             box-shadow: 0 0 0 3px var(--primary-100);
         }
-        .raw-text-box {
-            width: 100%; height: 96px; font-size: 0.68rem; font-family: monospace;
-            background: var(--gray-50); border: 1px solid var(--gray-100);
-            border-radius: var(--radius-lg); padding: 12px; color: var(--gray-600);
-            resize: none; text-transform: uppercase;
-        }
 
-        .meds-table {
-            width: 100%; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
-            overflow: hidden; background: white;
+        /* ── Vitals Section ── */
+        .vitals-section { margin-bottom: 16px; }
+        .vitals-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+        .vitals-list { display: flex; flex-direction: column; gap: 6px; }
+        .vital-row {
+            display: grid; grid-template-columns: 1fr 90px 60px 28px; gap: 6px; align-items: center;
+            padding: 8px 12px; background: var(--gray-50); border: 1px solid var(--gray-100);
+            border-radius: var(--radius-md); font-size: 0.78rem; transition: all 0.15s;
         }
-        .meds-table thead { background: var(--gray-50); }
-        .meds-table thead th {
-            padding: 10px 12px; font-size: 0.56rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.1em; color: var(--gray-400);
-            text-align: left; border-bottom: 1px solid var(--gray-100);
+        .vital-row:hover { border-color: var(--primary-200); background: var(--primary-50); }
+        .vital-row .vital-type { font-weight: 700; color: var(--gray-800); display:flex; align-items:center; gap:5px; }
+        .vital-row .vital-type .material-icons { font-size:15px; color:var(--primary-400); }
+        .vital-row .vital-val { font-weight: 600; text-align: center; color: var(--gray-700); }
+        .vital-row .vital-unit { font-size: 0.65rem; color: var(--gray-400); font-weight: 600; text-align: center; }
+        .vital-row .vital-del {
+            background: none; border: none; color: var(--gray-300); cursor: pointer;
+            padding: 2px; border-radius: var(--radius-sm); transition: all 0.15s;
         }
-        .meds-table tbody td { padding: 10px 12px; font-size: 0.8rem; }
-        .meds-table tbody tr:hover { background: var(--gray-50); }
-        .meds-table input {
-            width: 100%; background: transparent; border: none; padding: 0;
-            font-size: 0.8rem; font-weight: 600; color: var(--gray-700);
-        }
-        .meds-table input:focus { outline: none; }
+        .vital-row .vital-del:hover { color: var(--error); background: #fee2e2; }
+        .vital-empty { padding:24px; text-align:center; color:var(--gray-400); font-size:0.78rem;
+            background:var(--gray-50); border:1px dashed var(--gray-200); border-radius:var(--radius-md); }
 
+        /* ── Vital Add Dropdown ── */
+        .vital-add-area { position: relative; margin-bottom: 10px; }
+        .vital-search-input {
+            width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md); font-size: 0.8rem; background: white;
+            transition: all var(--transition-fast);
+        }
+        .vital-search-input:focus { outline:none; border-color:var(--primary-500); box-shadow:0 0 0 3px var(--primary-100); }
+        .vital-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+            background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg); max-height: 200px; overflow-y: auto; display: none;
+        }
+        .vital-dropdown.open { display: block; }
+        .vital-dropdown-item {
+            display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+            cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: background 0.15s;
+            border-bottom: 1px solid var(--gray-50);
+        }
+        .vital-dropdown-item:last-child { border-bottom: none; }
+        .vital-dropdown-item:hover { background: var(--primary-50); }
+        .vital-dropdown-item .material-icons { font-size: 16px; color: var(--primary-400); }
+        .vital-value-row {
+            display: grid; grid-template-columns: 1fr 72px; gap: 8px; margin-top: 8px;
+            animation: fadeIn 0.2s ease;
+        }
+        .vital-value-row input {
+            padding: 9px 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+            font-size: 0.8rem; font-weight: 600; transition: all var(--transition-fast);
+        }
+        .vital-value-row input:focus { outline:none; border-color:var(--primary-500); box-shadow:0 0 0 3px var(--primary-100); }
+
+        /* ── Workflow Stepper (compact) ── */
         .workflow-stepper {
-            padding-top: 24px; margin-top: 24px; border-top: 1px solid var(--gray-100);
+            padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--gray-100);
             display: flex; align-items: center; justify-content: space-between;
-            font-size: 0.56rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+            font-size: 0.52rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
         }
-        .step-done { color: var(--success); display: flex; align-items: center; gap: 6px; }
-        .step-active { color: var(--primary-500); display: flex; align-items: center; gap: 6px; }
-        .step-pending { color: var(--gray-300); display: flex; align-items: center; gap: 6px; }
-        .step-line { height: 1px; flex: 1; margin: 0 16px; }
+        .step-done { color: var(--success); display: flex; align-items: center; gap: 4px; }
+        .step-active { color: var(--primary-500); display: flex; align-items: center; gap: 4px; }
+        .step-pending { color: var(--gray-300); display: flex; align-items: center; gap: 4px; }
+        .step-line { height: 1px; flex: 1; margin: 0 10px; }
         .step-line.done { background: var(--success-light); }
         .step-line.pending { background: var(--gray-100); }
 
+        /* ── Verify Footer ── */
         .verify-footer {
-            border-top: 1px solid var(--gray-100); padding: 20px 24px;
-            background: var(--gray-50); display: flex; align-items: center;
-            justify-content: space-between; flex-shrink: 0;
+            padding: 12px 20px; border-top: 1px solid var(--gray-200);
+            display: flex; align-items: center; justify-content: space-between;
+            background: white; flex-shrink: 0;
         }
         .verify-footer .discard {
             color: var(--gray-400); font-size: 0.625rem; font-weight: 700;
@@ -344,23 +433,7 @@ export async function renderOCRUpload() {
         }
         .success-row .val { color: var(--gray-900); }
 
-        /* ── Toggle Switch ── */
-        .toggle-switch {
-            position: relative; display: inline-flex; align-items: center;
-            width: 36px; height: 20px; cursor: pointer;
-        }
-        .toggle-switch-track {
-            width: 36px; height: 20px; background: var(--primary-500);
-            border-radius: 10px; transition: background 0.2s;
-        }
-        .toggle-switch-knob {
-            position: absolute; top: 2px; left: 18px;
-            width: 16px; height: 16px; background: white;
-            border-radius: 50%; box-shadow: var(--shadow-sm);
-            transition: left 0.2s;
-        }
-        .toggle-switch.off .toggle-switch-track { background: var(--gray-300); }
-        .toggle-switch.off .toggle-switch-knob { left: 2px; }
+
 
         /* ── Full Layout ── */
         .ocr-main { display: flex; flex-direction: column; flex: 1; overflow: hidden; position: relative; }
@@ -517,70 +590,46 @@ export async function renderOCRUpload() {
 
         <!-- ═══════ STEP 3+4: VERIFICATION VIEW ═══════ -->
         <div id="step-verify" class="verify-section" style="display:none; flex:1;">
-            <!-- LEFT: Image Viewer -->
-            <section class="viewer-panel">
-                <div class="viewer-toolbar">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <label for="annotations-toggle">Annotations</label>
-                        <div class="toggle-switch" id="annotations-toggle">
-                            <div class="toggle-switch-track"></div>
-                            <div class="toggle-switch-knob"></div>
+            <!-- Hidden image holder for compare overlay -->
+            <img id="viewer-img" alt="Medical Document" style="display:none;" />
+
+            <!-- Verification Form (full width) -->
+            <section class="verify-form-panel">
+                <!-- Top Bar: Patient + Confidence + Compare -->
+                <div class="verify-topbar">
+                    <div class="patient-ctx">
+                        <span class="material-icons">person</span>
+                        <span id="verify-patient-context"></span>
+                    </div>
+                    <div class="conf-badge">
+                        <span class="conf-dot" id="conf-dot"></span>
+                        Conf: <span id="verify-conf-score">—</span>
+                    </div>
+                    <button class="compare-trigger" id="open-compare-btn">
+                        <span class="material-icons">compare</span>
+                        Compare with Original
+                    </button>
+                </div>
+
+                <!-- Scrollable Form Area -->
+                <div class="verify-form-scroll custom-scroll">
+                    <!-- Editable Extracted Text -->
+                    <div class="extracted-text-section">
+                        <div class="extracted-text-header">
+                            <span class="label">
+                                <span class="material-icons">text_snippet</span>
+                                AI Extracted Text
+                            </span>
+                            <span class="edit-hint">Click to edit · Changes auto-save</span>
+                        </div>
+                        <div class="extracted-text-body">
+                            <textarea id="raw-text-view" placeholder="Extracted text will appear here..."></textarea>
                         </div>
                     </div>
-                    <div style="width:1px;height:16px;background:var(--gray-200);"></div>
-                    <div style="display:flex;gap:12px;color:var(--gray-500);">
-                        <button id="zoom-in" style="background:none;border:none;cursor:pointer;color:inherit;" title="Zoom In"><span class="material-icons" style="font-size:18px;">zoom_in</span></button>
-                        <button id="zoom-out" style="background:none;border:none;cursor:pointer;color:inherit;" title="Zoom Out"><span class="material-icons" style="font-size:18px;">zoom_out</span></button>
-                        <button id="zoom-reset" style="background:none;border:none;cursor:pointer;color:inherit;" title="Reset"><span class="material-icons" style="font-size:18px;">crop_free</span></button>
-                    </div>
-                </div>
-                <div class="viewer-viewport custom-scroll" id="image-viewport">
-                    <div class="image-wrap" id="image-container">
-                        <img id="viewer-img" alt="Medical Document" />
-                        <div id="bounding-boxes-overlay" style="position:absolute;inset:0;z-index:10;pointer-events:none;"></div>
-                    </div>
-                </div>
-                <div class="page-indicator">Page 1 of 1</div>
-            </section>
 
-            <!-- RIGHT: Data Verification -->
-            <section class="data-panel">
-                <div class="verify-warning" id="verify-warning">
-                    <span class="material-icons">warning_amber</span>
-                    <div>
-                        <h3>Verification Required</h3>
-                        <p>Please verify all clinical fields against the original document.</p>
-                    </div>
-                </div>
-
-                <div class="verify-content custom-scroll">
-                    <!-- Patient Context in Verification -->
-                    <div style="
-                        display:flex;align-items:center;gap:10px;padding:10px 14px;
-                        background:var(--gray-50);border:1px solid var(--gray-100);
-                        border-radius:var(--radius-md);margin-bottom:20px;
-                    ">
-                        <span class="material-icons" style="color:var(--primary-500);font-size:18px;">person</span>
-                        <span id="verify-patient-context" style="font-size:0.8rem;font-weight:600;color:var(--gray-700);"></span>
-                    </div>
-
-                    <!-- Raw Text -->
-                    <div style="margin-bottom:20px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                            <span class="field-label" style="margin:0;">Raw AI Extraction</span>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <span style="font-size:0.56rem;font-weight:700;color:var(--gray-400);text-transform:uppercase;">Conf: <span id="verify-conf-score">94%</span></span>
-                                <div style="width:64px;height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;">
-                                    <div id="conf-bar-width" style="height:100%;background:var(--primary-500);width:94%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <textarea id="raw-text-view" class="raw-text-box" readonly></textarea>
-                    </div>
-
-                    <!-- Structured Fields -->
+                    <!-- Structured Fields (3-column dense) -->
                     <div id="structured-verification-fields">
-                        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">
+                        <div style="display:grid;grid-template-columns:2fr 1fr 2fr;gap:14px;margin-bottom:14px;">
                             <div>
                                 <span class="field-label">Patient Name</span>
                                 <input id="verify-patient-name" class="verify-input" type="text" />
@@ -589,58 +638,99 @@ export async function renderOCRUpload() {
                                 <span class="field-label">Age</span>
                                 <input id="verify-patient-age" class="verify-input" type="text" />
                             </div>
-                        </div>
-                        <div style="margin-bottom:16px;">
-                            <span class="field-label">Clinical Diagnosis</span>
-                            <div style="position:relative;">
-                                <input id="verify-diagnosis" class="verify-input" type="text" style="padding-left:40px;" />
-                                <span class="material-icons" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--primary-300);font-size:20px;">medical_services</span>
+                            <div>
+                                <span class="field-label">Clinical Diagnosis</span>
+                                <div style="position:relative;">
+                                    <input id="verify-diagnosis" class="verify-input" type="text" style="padding-left:36px;" />
+                                    <span class="material-icons" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--primary-300);font-size:18px;">medical_services</span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Medications Table -->
-                        <div style="margin-bottom:16px;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                                <span class="field-label" style="margin:0;">Medications List</span>
-                                <button style="font-size:0.625rem;color:var(--primary-500);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;">
-                                    <span class="material-icons" style="font-size:14px;">add_circle</span> Add Drug
-                                </button>
+                        <!-- Vitals Section -->
+                        <div class="vitals-section">
+                            <div class="vitals-header">
+                                <span class="field-label" style="margin:0;">Vitals</span>
                             </div>
-                            <table class="meds-table">
-                                <thead>
-                                    <tr>
-                                        <th>Drug</th>
-                                        <th style="width:70px;text-align:center;">Dosage</th>
-                                        <th style="width:80px;text-align:center;">Freq</th>
-                                        <th style="width:36px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="meds-table-body"></tbody>
-                            </table>
+                            <div class="vital-add-area" id="vital-add-area">
+                                <span class="material-icons" style="position:absolute;left:10px;top:9px;font-size:16px;color:var(--gray-400);z-index:2;">search</span>
+                                <input type="text" class="vital-search-input" id="vital-search" placeholder="Search vital (BP, Temp, SpO2...)" autocomplete="off" />
+                                <div class="vital-dropdown" id="vital-dropdown"></div>
+                                <div id="vital-value-entry"></div>
+                            </div>
+                            <div class="vitals-list" id="vitals-list">
+                                <div class="vital-empty" id="vitals-empty">
+                                    <span class="material-icons" style="font-size:24px;display:block;margin-bottom:4px;color:var(--gray-300);">monitor_heart</span>
+                                    No vitals added yet
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Workflow Stepper -->
                     <div class="workflow-stepper">
-                        <div class="step-done"><span class="material-icons" style="font-size:14px;">check_circle</span> AI DONE</div>
+                        <div class="step-done"><span class="material-icons" style="font-size:13px;">check_circle</span> AI DONE</div>
                         <div class="step-line done"></div>
-                        <div class="step-active"><span class="material-icons" style="font-size:14px;">radio_button_checked</span> REVIEW</div>
+                        <div class="step-active"><span class="material-icons" style="font-size:13px;">radio_button_checked</span> REVIEW</div>
                         <div class="step-line pending"></div>
-                        <div class="step-pending"><span class="material-icons" style="font-size:14px;">radio_button_unchecked</span> EMR SYNC</div>
+                        <div class="step-pending"><span class="material-icons" style="font-size:13px;">radio_button_unchecked</span> SAVE</div>
                     </div>
                 </div>
 
                 <!-- Footer -->
                 <div class="verify-footer">
-                    <button class="discard" id="verification-cancel-btn">Discard Extraction</button>
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <button class="btn btn-secondary" id="resubmit-btn">Edit & Resubmit</button>
-                        <button class="btn btn-primary" id="finalize-btn-new" style="display:flex;align-items:center;gap:8px;">
-                            Send to Doctor <span class="material-icons" style="font-size:16px;">send</span>
+                    <button class="discard" id="verification-cancel-btn">Discard</button>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <button class="btn btn-secondary" id="resubmit-btn" style="font-size:0.75rem;">Resubmit</button>
+                        <button class="btn btn-primary" id="finalize-btn-new" style="display:flex;align-items:center;gap:6px;font-size:0.8rem;">
+                            Save & Send <span class="material-icons" style="font-size:16px;">send</span>
                         </button>
                     </div>
                 </div>
             </section>
+        </div>
+
+        <!-- ═══════ COMPARE OVERLAY (Full-viewport modal) ═══════ -->
+        <div id="compare-overlay" class="compare-overlay">
+            <div class="compare-container">
+                <div class="compare-header">
+                    <h3><span class="material-icons" style="font-size:20px;color:var(--primary-500);">compare</span> Compare: Original Document vs Extracted Text</h3>
+                    <button class="compare-close" id="close-compare-btn" title="Close">
+                        <span class="material-icons" style="font-size:20px;">close</span>
+                    </button>
+                </div>
+                <!-- Left: Original Image -->
+                <div class="compare-pane">
+                    <div class="compare-pane-label">
+                        <span class="material-icons">image</span> Original Document
+                    </div>
+                    <div class="compare-img-wrap" id="compare-img-wrap">
+                        <img id="compare-img" alt="Original Document" />
+                    </div>
+                    <div class="compare-zoom-bar">
+                        <button id="compare-zoom-out" title="Zoom Out"><span class="material-icons" style="font-size:16px;">remove</span></button>
+                        <span class="zoom-level" id="compare-zoom-label">100%</span>
+                        <button id="compare-zoom-in" title="Zoom In"><span class="material-icons" style="font-size:16px;">add</span></button>
+                        <button id="compare-zoom-reset" title="Fit"><span class="material-icons" style="font-size:16px;">fit_screen</span></button>
+                    </div>
+                </div>
+                <!-- Right: Extracted Text (editable) -->
+                <div class="compare-pane" style="display:flex;flex-direction:column;">
+                    <div class="compare-pane-label">
+                        <span class="material-icons">text_snippet</span> Extracted Text
+                        <span style="margin-left:auto;font-size:0.55rem;color:var(--gray-300);font-style:italic;">Editable — corrections sync back</span>
+                    </div>
+                    <div class="compare-text-pane">
+                        <textarea id="compare-text-editor"></textarea>
+                    </div>
+                    <div class="compare-text-actions">
+                        <button class="btn btn-secondary btn-sm" id="compare-discard-btn">Discard Changes</button>
+                        <button class="btn btn-primary btn-sm" id="compare-save-btn">
+                            <span class="material-icons" style="font-size:14px;">check</span> Apply Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ═══════ PROCESSING OVERLAY ═══════ -->
@@ -660,7 +750,7 @@ export async function renderOCRUpload() {
             <div class="success-icon">
                 <span class="material-icons-round">check_circle</span>
             </div>
-            <h2 style="font-size:1.5rem;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:-0.01em;">Saved to EMR Successfully</h2>
+            <h2 style="font-size:1.5rem;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:-0.01em;">Saved Successfully</h2>
             <p style="color:var(--gray-500);max-width:320px;font-size:0.875rem;line-height:1.6;margin:0;">
                 The clinical documentation has been synchronized and verified against the master patient index.
             </p>
@@ -684,12 +774,25 @@ export async function renderOCRUpload() {
 
     renderAppShell('Verification Hub', bodyHTML, '/nurse/ocr');
 
+    /* ═══════════════ VITALS DATA ═══════════════ */
+    const VITAL_TYPES = [
+        { key: 'bp', label: 'Blood Pressure', icon: 'favorite', unit: 'mmHg', placeholder: '120/80' },
+        { key: 'temp', label: 'Temperature', icon: 'thermostat', unit: '°F', placeholder: '98.6' },
+        { key: 'spo2', label: 'SpO2', icon: 'oxygen', unit: '%', placeholder: '98' },
+        { key: 'resp', label: 'Resp Rate', icon: 'pulmonology', unit: '/min', placeholder: '18' },
+        { key: 'hr', label: 'Heart Rate', icon: 'monitor_heart', unit: 'bpm', placeholder: '72' },
+        { key: 'wt', label: 'Weight', icon: 'fitness_center', unit: 'kg', placeholder: '65' },
+        { key: 'ht', label: 'Height', icon: 'height', unit: 'cm', placeholder: '170' },
+    ];
+
     /* ═══════════════ STATE ═══════════════ */
     let selectedPatient = null;   // { id, name, age, gender, phone, address }
     let patientMode = 'existing'; // 'existing' | 'new'
     let selectedFile = null;
     let zoomLevel = 1;
-    let showAnnotations = true;
+    let currentEncId = null;
+    let currentVitals = [];       // [{ key, label, icon, unit, value }]
+
 
     /* ═══════════════ DOM REFS ═══════════════ */
     const stepPatient = document.getElementById('step-patient-id');
@@ -700,8 +803,7 @@ export async function renderOCRUpload() {
     const viewerImg = document.getElementById('viewer-img');
     const processingOverlay = document.getElementById('processing-overlay');
     const successState = document.getElementById('success-state');
-    const imageContainer = document.getElementById('image-container');
-    const boxesOverlay = document.getElementById('bounding-boxes-overlay');
+
 
     /* ═══════════════ STEP 1: PATIENT TABS ═══════════════ */
     const tabExisting = document.getElementById('tab-existing');
@@ -888,7 +990,8 @@ export async function renderOCRUpload() {
         processingOverlay.classList.add('visible');
 
         try {
-            const encId = `ENC-${Date.now().toString().slice(-6)}`;
+            const encId = `ENC-${new Date().getFullYear()}-${Date.now().toString().slice(-3)}`;
+            currentEncId = encId;
             const result = await uploadPrescription({
                 image: selectedFile,
                 encounterId: encId,
@@ -917,10 +1020,17 @@ export async function renderOCRUpload() {
         document.getElementById('verify-patient-context').textContent =
             `${selectedPatient?.name || '—'} · ${selectedPatient?.id || '—'} · ${selectedPatient?.age || '—'}y / ${selectedPatient?.gender || '—'}`;
 
-        // Raw text
-        document.getElementById('raw-text-view').value = result.raw_text || result.normalized_text || '';
-        document.getElementById('verify-conf-score').textContent = `${(result.confidence_mean || 0).toFixed(0)}%`;
-        document.getElementById('conf-bar-width').style.width = `${(result.confidence_mean || 0)}%`;
+        // Raw text & confidence
+        const rawText = result.raw_text || result.normalized_text || '';
+        document.getElementById('raw-text-view').value = rawText;
+        const conf = Math.round(result.confidence_mean || 0);
+        document.getElementById('verify-conf-score').textContent = `${conf}%`;
+
+        // Confidence dot color
+        const confDot = document.getElementById('conf-dot');
+        if (conf >= 80) confDot.style.background = 'var(--success)';
+        else if (conf >= 50) confDot.style.background = '#f59e0b';
+        else confDot.style.background = 'var(--error)';
 
         // Extract patient name/age from OCR fields (fallback to selected patient)
         const nameField = result.structured_fields?.find(f => f.field_type?.toLowerCase().includes('name'));
@@ -929,132 +1039,236 @@ export async function renderOCRUpload() {
         document.getElementById('verify-patient-name').value = nameField?.text || nameField?.value || selectedPatient?.name || '';
         document.getElementById('verify-patient-age').value = ageField?.text || ageField?.value || selectedPatient?.age || '';
 
-        // Medications
-        const tableBody = document.getElementById('meds-table-body');
-        const meds = result.structured_fields?.filter(f =>
-            f.field_type?.toLowerCase().includes('medicine') || f.field_type?.toLowerCase().includes('drug')
-        ) || [];
-
-        tableBody.innerHTML = meds.map(m => `
-            <tr>
-                <td><input type="text" value="${m.text || m.value}" /></td>
-                <td style="text-align:center;color:var(--gray-500);font-weight:500;">500mg</td>
-                <td style="text-align:center;color:var(--gray-500);font-weight:500;">1-1-1</td>
-                <td style="text-align:right;">
-                    <button style="background:none;border:none;color:var(--gray-300);cursor:pointer;transition:color 0.2s;" onmouseover="this.style.color='var(--error)'" onmouseout="this.style.color='var(--gray-300)'">
-                        <span class="material-icons" style="font-size:16px;">delete</span>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-
-        if (showAnnotations) renderAnnotations(result.structured_fields || []);
+        // Load persisted vitals for this encounter
+        currentVitals = loadVitalsFromStorage();
+        renderVitalsList();
     }
 
-    /* ── Field type → icon + target field mapping ── */
-    const FIELD_META = {
-        name: { icon: 'person', label: 'Patient Name', targetId: 'verify-patient-name' },
-        age: { icon: 'cake', label: 'Age', targetId: 'verify-patient-age' },
-        diagnosis: { icon: 'medical_services', label: 'Diagnosis', targetId: 'verify-diagnosis' },
-        medicine: { icon: 'medication', label: 'Medication', targetId: 'meds-table-body' },
-        drug: { icon: 'medication', label: 'Medication', targetId: 'meds-table-body' },
-        medication: { icon: 'medication', label: 'Medication', targetId: 'meds-table-body' },
-        lab: { icon: 'science', label: 'Lab Value', targetId: null },
-        test: { icon: 'biotech', label: 'Test', targetId: null },
-        hospital: { icon: 'local_hospital', label: 'Hospital', targetId: null },
-        date: { icon: 'calendar_today', label: 'Date', targetId: null },
-        doctor: { icon: 'stethoscope', label: 'Doctor', targetId: null },
-    };
+    /* ═══════════════ COMPARE OVERLAY ═══════════════ */
+    const compareOverlay = document.getElementById('compare-overlay');
+    const compareImg = document.getElementById('compare-img');
+    const compareTextEditor = document.getElementById('compare-text-editor');
+    let compareZoom = 1;
 
-    function getFieldMeta(fieldType) {
-        if (!fieldType) return { icon: 'description', label: 'Field', targetId: null };
-        const ft = fieldType.toLowerCase();
-        for (const [key, meta] of Object.entries(FIELD_META)) {
-            if (ft.includes(key)) return meta;
+    document.getElementById('open-compare-btn').addEventListener('click', () => {
+        // Populate compare overlay with current data
+        compareImg.src = viewerImg.src;
+        compareTextEditor.value = document.getElementById('raw-text-view').value;
+        compareZoom = 1;
+        compareImg.style.transform = 'scale(1)';
+        document.getElementById('compare-zoom-label').textContent = '100%';
+        compareOverlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    });
+
+    document.getElementById('close-compare-btn').addEventListener('click', () => {
+        compareOverlay.classList.remove('open');
+        document.body.style.overflow = '';
+    });
+
+    // Close on backdrop click
+    compareOverlay.addEventListener('click', (e) => {
+        if (e.target === compareOverlay) {
+            compareOverlay.classList.remove('open');
+            document.body.style.overflow = '';
         }
-        return { icon: 'description', label: fieldType, targetId: null };
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && compareOverlay.classList.contains('open')) {
+            compareOverlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    });
+
+    // Apply edited text back to main form
+    document.getElementById('compare-save-btn').addEventListener('click', () => {
+        document.getElementById('raw-text-view').value = compareTextEditor.value;
+        showToast('Extracted text updated', 'success');
+        compareOverlay.classList.remove('open');
+        document.body.style.overflow = '';
+    });
+
+    // Discard changes in compare editor
+    document.getElementById('compare-discard-btn').addEventListener('click', () => {
+        compareTextEditor.value = document.getElementById('raw-text-view').value;
+        showToast('Changes discarded', 'info');
+    });
+
+    // Compare overlay zoom controls
+    document.getElementById('compare-zoom-in').addEventListener('click', () => {
+        compareZoom = Math.min(compareZoom + 0.25, 3);
+        compareImg.style.transform = `scale(${compareZoom})`;
+        document.getElementById('compare-zoom-label').textContent = `${Math.round(compareZoom * 100)}%`;
+    });
+    document.getElementById('compare-zoom-out').addEventListener('click', () => {
+        compareZoom = Math.max(compareZoom - 0.25, 0.5);
+        compareImg.style.transform = `scale(${compareZoom})`;
+        document.getElementById('compare-zoom-label').textContent = `${Math.round(compareZoom * 100)}%`;
+    });
+    document.getElementById('compare-zoom-reset').addEventListener('click', () => {
+        compareZoom = 1;
+        compareImg.style.transform = 'scale(1)';
+        document.getElementById('compare-zoom-label').textContent = '100%';
+    });
+
+    /* ═══════════════ VITALS MANAGEMENT ═══════════════ */
+    const vitalSearch = document.getElementById('vital-search');
+    const vitalDropdown = document.getElementById('vital-dropdown');
+    const vitalValueEntry = document.getElementById('vital-value-entry');
+    let pendingVitalType = null;
+
+    vitalSearch.addEventListener('focus', () => showVitalDropdown(''));
+    vitalSearch.addEventListener('input', () => showVitalDropdown(vitalSearch.value.trim().toLowerCase()));
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.vital-add-area')) {
+            vitalDropdown.classList.remove('open');
+        }
+    });
+
+    function showVitalDropdown(filter) {
+        const available = VITAL_TYPES.filter(v =>
+            !currentVitals.some(cv => cv.key === v.key) &&
+            (filter === '' || v.label.toLowerCase().includes(filter) || v.key.includes(filter))
+        );
+        if (available.length === 0) {
+            vitalDropdown.innerHTML = '<div style="padding:14px;text-align:center;color:var(--gray-400);font-size:0.8rem;">All vitals added</div>';
+        } else {
+            vitalDropdown.innerHTML = available.map(v => `
+                <div class="vital-dropdown-item" data-key="${v.key}">
+                    <span class="material-icons">${v.icon}</span>
+                    <span>${v.label}</span>
+                    <span style="margin-left:auto;font-size:0.65rem;color:var(--gray-400);">${v.unit}</span>
+                </div>
+            `).join('');
+
+            vitalDropdown.querySelectorAll('.vital-dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const vt = VITAL_TYPES.find(v => v.key === item.dataset.key);
+                    if (vt) selectVitalType(vt);
+                });
+            });
+        }
+        vitalDropdown.classList.add('open');
     }
 
-    function getConfClass(conf) {
-        if (conf >= 80) return 'high';
-        if (conf >= 50) return 'mid';
-        return 'low';
+    function selectVitalType(vt) {
+        pendingVitalType = vt;
+        vitalDropdown.classList.remove('open');
+        vitalSearch.value = vt.label;
+        vitalSearch.disabled = true;
+
+        vitalValueEntry.innerHTML = `
+            <div class="vital-value-row">
+                <input type="text" id="vital-value-input" placeholder="${vt.placeholder}" autofocus />
+                <button class="btn btn-primary" id="vital-add-btn" style="padding:10px 16px;font-size:0.8rem;">Add</button>
+            </div>
+        `;
+
+        const valInput = document.getElementById('vital-value-input');
+        setTimeout(() => valInput.focus(), 50);
+
+        valInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addVital(); });
+        document.getElementById('vital-add-btn').addEventListener('click', addVital);
     }
 
-    function renderAnnotations(fields) {
-        if (!fields || fields.length === 0) {
-            boxesOverlay.innerHTML = `
-                <div class="anno-sidebar">
-                    <div class="anno-chip" style="cursor:default;opacity:0.6;">
-                        <span class="material-icons anno-icon" style="color:var(--gray-400);">info</span>
-                        <div class="anno-info">
-                            <div class="anno-type">No fields detected</div>
-                            <div class="anno-text">OCR returned no structured data</div>
-                        </div>
-                    </div>
-                </div>`;
+    function addVital() {
+        const valInput = document.getElementById('vital-value-input');
+        const val = valInput?.value?.trim();
+        if (!val || !pendingVitalType) {
+            showToast('Please enter a value', 'error');
             return;
         }
-
-        const chips = fields.map((f, i) => {
-            const meta = getFieldMeta(f.field_type);
-            const conf = Math.round(f.confidence || 0);
-            const confLevel = getConfClass(conf);
-            const text = f.text || f.value || '—';
-            const truncText = text.length > 22 ? text.slice(0, 22) + '…' : text;
-
-            return `
-                <div class="anno-chip conf-border-${confLevel}" data-anno-idx="${i}" data-target="${meta.targetId || ''}">
-                    <span class="material-icons anno-icon" style="color:${confLevel === 'high' ? 'var(--success)' : confLevel === 'mid' ? '#f59e0b' : 'var(--error)'}">${meta.icon}</span>
-                    <div class="anno-info">
-                        <div class="anno-type">${meta.label}</div>
-                        <div class="anno-text" title="${text}">${truncText}</div>
-                    </div>
-                    <span class="anno-conf conf-${confLevel}">${conf}%</span>
-                </div>`;
-        }).join('');
-
-        boxesOverlay.innerHTML = `<div class="anno-sidebar">${chips}</div>`;
-
-        // Interactive: click chip → highlight the linked verification field
-        boxesOverlay.querySelectorAll('.anno-chip[data-target]').forEach(chip => {
-            chip.addEventListener('click', () => {
-                const targetId = chip.dataset.target;
-                if (!targetId) return;
-
-                // Remove previous highlights
-                document.querySelectorAll('.field-highlight').forEach(el => el.classList.remove('field-highlight'));
-                document.querySelectorAll('.anno-chip.active').forEach(el => el.classList.remove('active'));
-
-                // Highlight this chip
-                chip.classList.add('active');
-
-                // Highlight the target field
-                const target = document.getElementById(targetId);
-                if (!target) return;
-
-                // For the meds table, highlight the table wrapper
-                const highlightEl = target.closest('.meds-table') || target;
-                highlightEl.classList.add('field-highlight');
-                highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                // Auto-remove highlight after 3s
-                setTimeout(() => {
-                    highlightEl.classList.remove('field-highlight');
-                    chip.classList.remove('active');
-                }, 3000);
-            });
+        currentVitals.push({
+            key: pendingVitalType.key,
+            label: pendingVitalType.label,
+            icon: pendingVitalType.icon,
+            unit: pendingVitalType.unit,
+            value: val,
         });
+        saveVitalsToStorage();
+        renderVitalsList();
+
+        // Reset add area
+        pendingVitalType = null;
+        vitalSearch.value = '';
+        vitalSearch.disabled = false;
+        vitalValueEntry.innerHTML = '';
+        showToast(`${currentVitals[currentVitals.length - 1].label} added`, 'success');
+    }
+
+    function removeVital(key) {
+        currentVitals = currentVitals.filter(v => v.key !== key);
+        saveVitalsToStorage();
+        renderVitalsList();
+    }
+
+    function renderVitalsList() {
+        const list = document.getElementById('vitals-list');
+        const empty = document.getElementById('vitals-empty');
+        if (currentVitals.length === 0) {
+            list.innerHTML = '';
+            list.appendChild(empty.cloneNode(true)).style.display = '';
+            return;
+        }
+        list.innerHTML = currentVitals.map(v => `
+            <div class="vital-row" data-key="${v.key}">
+                <div class="vital-type"><span class="material-icons">${v.icon}</span> ${v.label}</div>
+                <div class="vital-val">${v.value}</div>
+                <div class="vital-unit">${v.unit}</div>
+                <button class="vital-del" data-key="${v.key}"><span class="material-icons" style="font-size:16px;">close</span></button>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.vital-del').forEach(btn => {
+            btn.addEventListener('click', () => removeVital(btn.dataset.key));
+        });
+    }
+
+    /* ═══════════════ VITALS PERSISTENCE ═══════════════ */
+    function getVitalsStorageKey() {
+        return `ocr_vitals_${currentEncId || 'draft'}_${selectedPatient?.id || 'unknown'}`;
+    }
+    function saveVitalsToStorage() {
+        try { localStorage.setItem(getVitalsStorageKey(), JSON.stringify(currentVitals)); } catch (e) { }
+    }
+    function loadVitalsFromStorage() {
+        try {
+            const data = localStorage.getItem(getVitalsStorageKey());
+            return data ? JSON.parse(data) : [];
+        } catch (e) { return []; }
     }
 
     /* ═══════════════ STEP 4: FINALIZE ═══════════════ */
     const finalizeBtn = document.getElementById('finalize-btn-new');
     finalizeBtn.addEventListener('click', () => {
         finalizeBtn.disabled = true;
-        finalizeBtn.innerHTML = '<span class="material-icons" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> SYNCING...';
+        finalizeBtn.innerHTML = '<span class="material-icons" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> SAVING...';
 
         setTimeout(() => {
-            const encId = `ENC-${Math.floor(100000 + Math.random() * 900000)}`;
+            // Generate proper encounter ID
+            const year = new Date().getFullYear();
+            const existingEncs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
+            const nextNum = (existingEncs.length + 1).toString().padStart(3, '0');
+            const encId = `ENC-${year}-${nextNum}`;
+            currentEncId = encId;
+
+            // Save encounter to localStorage
+            const encounter = {
+                id: encId,
+                patient_name: selectedPatient?.name || '—',
+                type: 'Prescription OCR',
+                status: 'Completed',
+                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                vitals: currentVitals,
+                patient_id: selectedPatient?.id || null,
+            };
+            existingEncs.push(encounter);
+            localStorage.setItem('ocr_encounters', JSON.stringify(existingEncs));
+
+            // Display success
             document.getElementById('success-enc-id').textContent = encId;
             document.getElementById('success-patient-name').textContent = selectedPatient?.name || '—';
             document.getElementById('success-nurse-name').textContent = user ? user.name || user.username : 'Nurse Priya';
@@ -1082,29 +1296,12 @@ export async function renderOCRUpload() {
         stepUpload.style.display = 'flex';
         fileInput.value = '';
         selectedFile = null;
+        currentVitals = [];
+        pendingVitalType = null;
         finalizeBtn.disabled = false;
-        finalizeBtn.innerHTML = 'Send to Doctor <span class="material-icons" style="font-size:16px;">send</span>';
+        finalizeBtn.innerHTML = 'Save & Send <span class="material-icons" style="font-size:16px;">send</span>';
     }
 
-    /* ═══════════════ VIEWER CONTROLS ═══════════════ */
-    document.getElementById('zoom-in').addEventListener('click', () => { zoomLevel += 0.2; updateZoom(); });
-    document.getElementById('zoom-out').addEventListener('click', () => { if (zoomLevel > 0.4) zoomLevel -= 0.2; updateZoom(); });
-    document.getElementById('zoom-reset').addEventListener('click', () => { zoomLevel = 1; updateZoom(); });
+    /* Zoom controls are now in the compare overlay — see COMPARE OVERLAY section above */
 
-    function updateZoom() { imageContainer.style.transform = `scale(${zoomLevel})`; }
-
-    // Annotations toggle
-    const annoToggle = document.getElementById('annotations-toggle');
-    annoToggle.addEventListener('click', () => {
-        showAnnotations = !showAnnotations;
-        if (showAnnotations) {
-            annoToggle.classList.remove('off');
-            boxesOverlay.style.display = '';
-        } else {
-            annoToggle.classList.add('off');
-            boxesOverlay.style.display = 'none';
-            // Remove any active highlights
-            document.querySelectorAll('.field-highlight').forEach(el => el.classList.remove('field-highlight'));
-        }
-    });
 }
