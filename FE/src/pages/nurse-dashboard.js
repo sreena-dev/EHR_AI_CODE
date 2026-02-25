@@ -17,6 +17,8 @@ const BADGE_MAP = {
 const TYPE_BADGE = {
   'Prescription OCR': 'badge-primary',
   'Lab Report': 'badge-info',
+  'Vitals Entry': 'badge-success',
+  'Patient Registration': 'badge-neutral',
 };
 
 export async function renderNurseDashboard() {
@@ -121,7 +123,7 @@ export async function renderNurseDashboard() {
 
   renderAppShell('Clinical Dashboard', bodyHTML, '/nurse/dashboard');
 
-  /* ── Fetch data from backend ── */
+  /* ── Fetch data from backend + merge with localStorage ── */
   let encounters = [];
   let counts = { total: 0, pending_ocr: 0, requires_review: 0, completed: 0 };
 
@@ -137,6 +139,20 @@ export async function renderNurseDashboard() {
         Failed to load dashboard data — ${err.message}
       </td></tr>`;
   }
+
+  // Merge localStorage encounters (from OCR finalize, vitals, patient registration)
+  try {
+    const localEncs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
+    if (localEncs.length) {
+      // Prepend local encounters (newest first) and recalculate counts
+      encounters = [...localEncs.reverse(), ...encounters];
+      // Recalculate counts from merged data
+      counts.total = encounters.length;
+      counts.pending_ocr = encounters.filter(e => e.status === 'Pending OCR').length;
+      counts.requires_review = encounters.filter(e => e.status === 'Requires Review').length;
+      counts.completed = encounters.filter(e => e.status === 'Completed').length;
+    }
+  } catch (e) { console.warn('Could not load local encounters:', e); }
 
   /* ── Populate stat card values ── */
   document.getElementById('val-total').textContent = counts.total;
