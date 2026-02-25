@@ -705,7 +705,7 @@ export async function renderOCRUpload() {
         </div>
 
         <!-- ═══════ STEP 2: UPLOAD VIEW ═══════ -->
-        <div id="step-upload" style="flex:1; display:none; align-items:center; justify-content:center; padding:24px; background:var(--gray-50); overflow-y:auto;">
+        <div id="step-upload" style="flex:1; display:none; align-items:flex-start; justify-content:center; padding:32px 24px; background:var(--gray-50); overflow-y:auto;">
             <div class="patient-step-card" style="max-width:740px;">
                 <div class="step-header">
                     <div class="icon-box">
@@ -1199,6 +1199,21 @@ export async function renderOCRUpload() {
                 });
                 selectedPatient = result.patient;
                 showToast(`Patient ${selectedPatient.id} registered successfully`, 'success');
+
+                // Save registration encounter for dashboard sync
+                try {
+                    const encs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
+                    const nextNum = (encs.length + 1).toString().padStart(3, '0');
+                    encs.push({
+                        id: `REG-${new Date().getFullYear()}-${nextNum}`,
+                        patient_name: selectedPatient.name,
+                        type: 'Patient Registration',
+                        status: 'Completed',
+                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                        patient_id: selectedPatient.id,
+                    });
+                    localStorage.setItem('ocr_encounters', JSON.stringify(encs));
+                } catch (e) { /* silent */ }
             } catch (err) {
                 showToast(err.message || 'Registration failed', 'error');
                 proceedBtn.disabled = false;
@@ -1730,6 +1745,9 @@ export async function renderOCRUpload() {
         pendingVitalType = null;
         finalizeBtn.disabled = false;
         finalizeBtn.innerHTML = 'Save & Send <span class="material-icons" style="font-size:16px;">send</span>';
+        // Reset upload preview state
+        uploadPreview.classList.remove('visible');
+        dropZone.style.display = '';
     }
 
     /* Zoom controls are now in the compare overlay — see COMPARE OVERLAY section above */
