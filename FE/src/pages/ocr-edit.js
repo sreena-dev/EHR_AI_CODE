@@ -7,10 +7,10 @@ import { showToast } from '../components/toast.js';
 import { renderAppShell } from '../components/app-shell.js';
 
 export async function renderOCREdit() {
-    // Mock OCR data for editing
-    const ocrData = {
-        scanId: 'SCN-20260221-005',
-        rawText: `நோயாளி பெயர்: ஹரோல்ட் பிஞ்ச்
+  // Mock OCR data for editing
+  const ocrData = {
+    scanId: 'SCN-20260221-005',
+    rawText: `நோயாளி பெயர்: ஹரோல்ட் பிஞ்ச்
 வயது: 42
 நாள்: 21-02-2026
 குறிப்பு: கடுமையான நெஞ்சுவலி, 3 நாட்கள்
@@ -21,22 +21,22 @@ export async function renderOCREdit() {
 3. Nitroglycerin SL 0.4mg - தேவைப்படும்போது
 
 மருத்துவர் கையொப்பம்: Dr. Anand K.`,
-        structured: {
-            patientName: 'Harold Finch',
-            patientNameTamil: 'ஹரோல்ட் பிஞ்ச்',
-            age: '42',
-            date: '2026-02-21',
-            chiefComplaint: 'Severe chest pain, 3 days',
-        },
-        medications: [
-            { name: 'Aspirin', dose: '325mg', frequency: 'Daily', route: 'PO' },
-            { name: 'Pantoprazole', dose: '40mg', frequency: 'Morning', route: 'PO' },
-            { name: 'Nitroglycerin SL', dose: '0.4mg', frequency: 'PRN', route: 'SL' },
-        ],
-    };
+    structured: {
+      patientName: 'Harold Finch',
+      patientNameTamil: 'ஹரோல்ட் பிஞ்ச்',
+      age: '42',
+      date: '2026-02-21',
+      chiefComplaint: 'Severe chest pain, 3 days',
+    },
+    medications: [
+      { name: 'Aspirin', dose: '325mg', frequency: 'Daily', route: 'PO' },
+      { name: 'Pantoprazole', dose: '40mg', frequency: 'Morning', route: 'PO' },
+      { name: 'Nitroglycerin SL', dose: '0.4mg', frequency: 'PRN', route: 'SL' },
+    ],
+  };
 
-    renderAppShell('OCR Edit & Resubmit', `
-    <div style="max-width: 1000px; margin: 0 auto;">
+  renderAppShell('OCR Edit & Resubmit', `
+    <div style="max-width: 1300px; margin: 0 auto;">
       <!-- Header -->
       <div style="margin-bottom: 20px;">
         <div class="breadcrumb" style="margin-bottom: 8px;">
@@ -54,9 +54,33 @@ export async function renderOCREdit() {
         <div><strong>Manual edit mode active</strong> — Ensure all data matches the original image precisely before resubmitting.</div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <!-- Left: Raw Text -->
+      <!-- Side-by-Side Layout -->
+      <div style="display: grid; grid-template-columns: 5fr 7fr; gap: 24px; align-items: start;">
+        <!-- Left Pane: Sticky Image Viewer -->
+        <div style="position: sticky; top: 24px; height: calc(100vh - 140px); display: flex; flex-direction: column;">
+          <div class="card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="card-header" style="flex-shrink: 0;">
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons-outlined" style="font-size: 18px; color: var(--primary-500);">image</span>
+                Original Scan
+              </h3>
+            </div>
+            <div class="card-body" style="flex: 1; display: flex; align-items: center; justify-content: center; background: var(--gray-50); padding: 32px;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--gray-400);">
+                <span class="material-icons-outlined" style="font-size: 64px; opacity: 0.5;">document_scanner</span>
+                <p class="text-sm" style="margin: 0; font-weight: 600; text-align: center;">Original prescription scan</p>
+                <p style="font-size: 0.7rem; margin: 0; color: var(--gray-300); display: flex; align-items: center; gap: 4px;">
+                  <span class="material-icons-outlined" style="font-size: 14px;">pan_tool</span>
+                  Pan & zoom to inspect details
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Pane: Scrollable Forms -->
         <div>
+          <!-- Raw Text -->
           <div class="card" style="margin-bottom: 20px;">
             <div class="card-header">
               <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -65,13 +89,11 @@ export async function renderOCREdit() {
               </h3>
             </div>
             <div class="card-body">
-              <textarea class="form-textarea" id="ocr-raw-text" style="min-height: 280px; font-size: 0.875rem;">${ocrData.rawText}</textarea>
+              <textarea class="form-textarea" id="ocr-raw-text" style="min-height: 200px; font-size: 0.875rem;">${ocrData.rawText}</textarea>
             </div>
           </div>
-        </div>
 
-        <!-- Right: Structured Data -->
-        <div>
+          <!-- Structured Data -->
           <div class="card" style="margin-bottom: 20px;">
             <div class="card-header">
               <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -104,81 +126,87 @@ export async function renderOCREdit() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Medications -->
-      <div class="card" style="margin-bottom: 20px;">
-        <div class="card-header">
-          <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-            <span class="material-icons-outlined" style="font-size: 18px; color: #b45309;">medication</span>
-            Medications
-          </h3>
-          <button class="btn btn-sm btn-primary" id="add-ocr-med-btn">
-            <span class="material-icons-outlined" style="font-size: 16px;">add</span> Add Row
-          </button>
-        </div>
-        <div class="card-body" style="padding: 0;">
-          <table class="table" style="margin: 0;" id="med-table">
-            <thead><tr><th>Medication</th><th>Dose</th><th>Frequency</th><th>Route</th><th></th></tr></thead>
-            <tbody>
-              ${ocrData.medications.map((m, i) => `
-                <tr>
-                  <td><input class="form-input" value="${m.name}" style="padding:6px 10px; font-size: 0.8125rem;" /></td>
-                  <td><input class="form-input" value="${m.dose}" style="padding:6px 10px; font-size: 0.8125rem; width:100px;" /></td>
-                  <td><input class="form-input" value="${m.frequency}" style="padding:6px 10px; font-size: 0.8125rem; width:100px;" /></td>
-                  <td><input class="form-input" value="${m.route}" style="padding:6px 10px; font-size: 0.8125rem; width:60px;" /></td>
-                  <td><button class="btn btn-sm btn-ghost del-med-btn" style="color:var(--error);"><span class="material-icons-outlined" style="font-size:16px;">close</span></button></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <!-- Medications -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons-outlined" style="font-size: 18px; color: #b45309;">medication</span>
+                Medications
+              </h3>
+              <button class="btn btn-sm btn-primary" id="add-ocr-med-btn">
+                <span class="material-icons-outlined" style="font-size: 16px;">add</span> Add Row
+              </button>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <table class="table" style="margin: 0; width: 100%;" id="med-table">
+                <thead><tr style="background: var(--gray-50);">
+                  <th style="padding: 10px 16px;">Medication</th>
+                  <th style="padding: 10px 16px;">Dose</th>
+                  <th style="padding: 10px 16px;">Frequency</th>
+                  <th style="padding: 10px 16px;">Route</th>
+                  <th style="padding: 10px 16px;"></th>
+                </tr></thead>
+                <tbody>
+                  ${ocrData.medications.map((m, i) => `
+                    <tr>
+                      <td style="padding: 8px 16px;"><input class="form-input" value="${m.name}" style="padding:6px 10px; font-size: 0.8125rem;" /></td>
+                      <td style="padding: 8px 16px;"><input class="form-input" value="${m.dose}" style="padding:6px 10px; font-size: 0.8125rem; width:100px;" /></td>
+                      <td style="padding: 8px 16px;"><input class="form-input" value="${m.frequency}" style="padding:6px 10px; font-size: 0.8125rem; width:100px;" /></td>
+                      <td style="padding: 8px 16px;"><input class="form-input" value="${m.route}" style="padding:6px 10px; font-size: 0.8125rem; width:60px;" /></td>
+                      <td style="padding: 8px 16px;"><button class="btn btn-sm btn-ghost del-med-btn" style="color:var(--error);"><span class="material-icons-outlined" style="font-size:16px;">close</span></button></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-      <!-- Actions -->
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn btn-secondary" id="cancel-edit-btn">Cancel</button>
-        <button class="btn btn-primary" id="resubmit-btn">
-          <span class="material-icons-outlined" style="font-size: 18px;">refresh</span>
-          Resubmit for Processing
-        </button>
+          <!-- Actions -->
+          <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn btn-secondary" id="cancel-edit-btn">Cancel</button>
+            <button class="btn btn-primary" id="resubmit-btn">
+              <span class="material-icons-outlined" style="font-size: 18px;">refresh</span>
+              Resubmit for Processing
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   `, '/nurse/ocr');
 
-    // Delete medication row
-    document.querySelectorAll('.del-med-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            btn.closest('tr').remove();
-            showToast('Medication removed', 'info');
-        });
+  // Delete medication row
+  document.querySelectorAll('.del-med-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('tr').remove();
+      showToast('Medication removed', 'info');
     });
+  });
 
-    // Add medication row
-    document.getElementById('add-ocr-med-btn')?.addEventListener('click', () => {
-        const tbody = document.querySelector('#med-table tbody');
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+  // Add medication row
+  document.getElementById('add-ocr-med-btn')?.addEventListener('click', () => {
+    const tbody = document.querySelector('#med-table tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
           <td><input class="form-input" placeholder="Name" style="padding:6px 10px; font-size: 0.8125rem;" /></td>
           <td><input class="form-input" placeholder="Dose" style="padding:6px 10px; font-size: 0.8125rem; width:100px;" /></td>
           <td><input class="form-input" placeholder="Freq" style="padding:6px 10px; font-size: 0.8125rem; width:100px;" /></td>
           <td><input class="form-input" placeholder="PO" style="padding:6px 10px; font-size: 0.8125rem; width:60px;" /></td>
           <td><button class="btn btn-sm btn-ghost del-med-btn" style="color:var(--error);" onclick="this.closest('tr').remove()"><span class="material-icons-outlined" style="font-size:16px;">close</span></button></td>
         `;
-        tbody.appendChild(tr);
-    });
+    tbody.appendChild(tr);
+  });
 
-    document.getElementById('resubmit-btn')?.addEventListener('click', async () => {
-        const btn = document.getElementById('resubmit-btn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;"></span> Processing...';
-        await new Promise(r => setTimeout(r, 2000));
-        showToast('OCR data resubmitted successfully!', 'success');
-        setTimeout(() => navigate('/nurse/ocr-results'), 1000);
-    });
+  document.getElementById('resubmit-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('resubmit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;"></span> Processing...';
+    await new Promise(r => setTimeout(r, 2000));
+    showToast('OCR data resubmitted successfully!', 'success');
+    setTimeout(() => navigate('/nurse/ocr-results'), 1000);
+  });
 
-    document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
-        navigate('/nurse/ocr-results');
-    });
+  document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+    navigate('/nurse/ocr-results');
+  });
 }
