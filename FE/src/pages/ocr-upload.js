@@ -17,10 +17,184 @@ export async function renderOCRUpload() {
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: var(--gray-300); border-radius: 20px; }
 
-        /* ── Upload dashed border ── */
-        .dashed-border {
-            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%232563EB' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        /* ── Upload Area ── */
+        .upload-methods {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px;
         }
+        .upload-method-card {
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            padding: 20px 16px; border-radius: var(--radius-lg);
+            border: 2px solid var(--gray-200); background: white;
+            cursor: pointer; transition: all 0.2s ease;
+            position: relative; overflow: hidden;
+        }
+        .upload-method-card:hover { border-color: var(--primary-300); background: var(--primary-50); }
+        .upload-method-card.active {
+            border-color: var(--primary-500); background: var(--primary-50);
+            box-shadow: 0 0 0 3px var(--primary-100);
+        }
+        .upload-method-card .method-icon {
+            width: 48px; height: 48px; border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            background: var(--gray-100); transition: all 0.2s;
+        }
+        .upload-method-card:hover .method-icon,
+        .upload-method-card.active .method-icon {
+            background: var(--primary-100);
+        }
+        .upload-method-card .method-icon .material-icons {
+            font-size: 24px; color: var(--gray-500); transition: color 0.2s;
+        }
+        .upload-method-card:hover .method-icon .material-icons,
+        .upload-method-card.active .method-icon .material-icons { color: var(--primary-500); }
+        .upload-method-card .method-label {
+            font-size: 0.78rem; font-weight: 700; color: var(--gray-600);
+            text-align: center;
+        }
+        .upload-method-card .method-hint {
+            font-size: 0.6rem; color: var(--gray-400); font-weight: 500;
+            text-align: center; line-height: 1.4;
+        }
+        @media (max-width: 600px) { .upload-methods { grid-template-columns: 1fr; } }
+
+        /* ── Drop Zone ── */
+        .drop-zone {
+            border: 2px dashed var(--gray-300); border-radius: var(--radius-xl);
+            background: var(--gray-50); padding: 48px 32px; text-align: center;
+            cursor: pointer; transition: all 0.25s ease; position: relative;
+        }
+        .drop-zone:hover { border-color: var(--primary-400); background: rgba(36,99,235,0.03); }
+        .drop-zone.drag-active {
+            border-color: var(--primary-500); background: var(--primary-50);
+            box-shadow: 0 0 0 4px var(--primary-100);
+            transform: scale(1.01);
+        }
+        .drop-zone .drop-icon {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-100), var(--primary-50));
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px; transition: transform 0.3s;
+        }
+        .drop-zone:hover .drop-icon { transform: translateY(-4px); }
+        .drop-zone.drag-active .drop-icon { transform: scale(1.15); }
+        .drop-zone .drop-icon .material-icons { font-size: 32px; color: var(--primary-500); }
+        .drop-zone h3 { font-size: 1.1rem; font-weight: 700; margin: 0 0 6px; color: var(--gray-800); }
+        .drop-zone p { font-size: 0.8rem; color: var(--gray-400); margin: 0 0 24px; }
+        .drop-zone .file-types {
+            display: flex; align-items: center; justify-content: center;
+            gap: 16px; font-size: 0.6rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.1em; color: var(--gray-400);
+        }
+        .drop-zone .file-types .sep { width: 1px; height: 14px; background: var(--gray-200); }
+
+        /* ── Camera Modal ── */
+        .camera-modal {
+            position: fixed; inset: 0; z-index: 250; background: rgba(0,0,0,0.85);
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .camera-modal.open { display: flex; }
+        .camera-modal-inner {
+            width: 92vw; max-width: 720px; background: white;
+            border-radius: var(--radius-xl); overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4); animation: fadeIn 0.3s ease;
+        }
+        .camera-modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; background: var(--gray-900); color: white;
+        }
+        .camera-modal-header h3 {
+            font-size: 0.9rem; font-weight: 700; margin: 0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .camera-modal-header .close-cam {
+            background: none; border: none; color: var(--gray-400); cursor: pointer;
+            padding: 4px; border-radius: var(--radius-sm); transition: color 0.15s;
+        }
+        .camera-modal-header .close-cam:hover { color: white; }
+        .camera-video-wrap {
+            position: relative; background: black; aspect-ratio: 4/3;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .camera-video-wrap video {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .camera-video-wrap .cam-placeholder {
+            color: var(--gray-500); text-align: center;
+        }
+        .camera-controls {
+            display: flex; align-items: center; justify-content: center;
+            gap: 16px; padding: 20px; background: var(--gray-900);
+        }
+        .capture-btn {
+            width: 64px; height: 64px; border-radius: 50%;
+            border: 4px solid white; background: var(--primary-500);
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 16px rgba(36,99,235,0.4);
+        }
+        .capture-btn:hover { transform: scale(1.1); background: var(--primary-600); }
+        .capture-btn:active { transform: scale(0.95); }
+        .capture-btn .material-icons { color: white; font-size: 28px; }
+        .retake-btn, .use-photo-btn {
+            padding: 10px 24px; border-radius: var(--radius-md); font-size: 0.78rem;
+            font-weight: 700; cursor: pointer; border: none; transition: all 0.15s;
+        }
+        .retake-btn {
+            background: var(--gray-700); color: white;
+        }
+        .retake-btn:hover { background: var(--gray-600); }
+        .use-photo-btn {
+            background: var(--primary-500); color: white;
+            box-shadow: 0 4px 12px rgba(36,99,235,0.3);
+        }
+        .use-photo-btn:hover { background: var(--primary-600); }
+
+        /* ── Image Preview ── */
+        .upload-preview {
+            display: none; flex-direction: column; align-items: center;
+            gap: 16px; padding: 24px; border: 2px solid var(--primary-200);
+            border-radius: var(--radius-xl); background: var(--primary-50);
+            animation: fadeIn 0.3s ease;
+        }
+        .upload-preview.visible { display: flex; }
+        .upload-preview .preview-img-wrap {
+            width: 100%; max-height: 280px; display: flex; align-items: center;
+            justify-content: center; overflow: hidden; border-radius: var(--radius-lg);
+            background: white; border: 1px solid var(--gray-200);
+        }
+        .upload-preview .preview-img-wrap img {
+            max-width: 100%; max-height: 280px; object-fit: contain;
+        }
+        .upload-preview .preview-info {
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+            justify-content: center;
+        }
+        .upload-preview .preview-info .info-badge {
+            display: flex; align-items: center; gap: 6px; padding: 4px 12px;
+            background: white; border: 1px solid var(--gray-200);
+            border-radius: var(--radius-full); font-size: 0.65rem;
+            font-weight: 700; color: var(--gray-500);
+        }
+        .upload-preview .preview-info .info-badge .material-icons { font-size: 14px; color: var(--primary-500); }
+        .upload-preview .preview-actions {
+            display: flex; gap: 12px;
+        }
+        .upload-preview .preview-actions button {
+            padding: 10px 24px; border-radius: var(--radius-md);
+            font-size: 0.78rem; font-weight: 700; cursor: pointer;
+            border: none; transition: all 0.15s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .preview-change-btn {
+            background: var(--gray-100); color: var(--gray-600);
+        }
+        .preview-change-btn:hover { background: var(--gray-200); }
+        .preview-proceed-btn {
+            background: var(--primary-500); color: white;
+            box-shadow: 0 4px 12px rgba(36,99,235,0.25);
+        }
+        .preview-proceed-btn:hover { background: var(--primary-600); }
 
 
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
@@ -531,8 +705,8 @@ export async function renderOCRUpload() {
         </div>
 
         <!-- ═══════ STEP 2: UPLOAD VIEW ═══════ -->
-        <div id="step-upload" style="flex:1; display:none; align-items:center; justify-content:center; padding:24px; background:var(--gray-50);">
-            <div class="patient-step-card" style="max-width:680px;">
+        <div id="step-upload" style="flex:1; display:none; align-items:center; justify-content:center; padding:24px; background:var(--gray-50); overflow-y:auto;">
+            <div class="patient-step-card" style="max-width:740px;">
                 <div class="step-header">
                     <div class="icon-box">
                         <span class="material-icons" style="font-size:22px;">document_scanner</span>
@@ -554,36 +728,121 @@ export async function renderOCRUpload() {
                     </button>
                 </div>
 
-                <div class="dashed-border" style="
-                    border-radius:var(--radius-xl); background:rgba(36,99,235,0.02);
-                    display:flex; flex-direction:column; align-items:center; justify-content:center;
-                    padding:64px 32px; text-align:center; cursor:pointer; position:relative;
-                    transition:background 0.2s;
-                " id="upload-area">
-                    <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;" />
-                    <div style="background:var(--primary-100);padding:20px;border-radius:var(--radius-xl);margin-bottom:20px;transition:transform 0.2s;">
-                        <span class="material-symbols-outlined" style="color:var(--primary-500);font-size:48px;">cloud_upload</span>
+                <!-- Upload Method Selector -->
+                <div class="upload-methods">
+                    <div class="upload-method-card active" data-method="browse" id="method-browse">
+                        <div class="method-icon">
+                            <span class="material-icons">upload_file</span>
+                        </div>
+                        <div class="method-label">Browse Files</div>
+                        <div class="method-hint">Select from device</div>
                     </div>
-                    <h3 style="font-size:1.25rem;font-weight:700;margin:0 0 8px;">Upload clinical document</h3>
-                    <p style="color:var(--gray-500);font-size:0.875rem;margin:0 0 32px;">Drag and drop or click to browse files</p>
-                    <div style="display:flex;align-items:center;gap:16px;">
-                        <span style="font-size:0.625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-400);">Supported: JPG, PNG</span>
-                        <div style="width:1px;height:16px;background:var(--gray-200);"></div>
-                        <span style="font-size:0.625rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray-400);">Max Size: 10MB</span>
+                    <div class="upload-method-card" data-method="camera" id="method-camera">
+                        <div class="method-icon">
+                            <span class="material-icons">photo_camera</span>
+                        </div>
+                        <div class="method-label">Camera Capture</div>
+                        <div class="method-hint">Take a photo</div>
+                    </div>
+                    <div class="upload-method-card" data-method="dragdrop" id="method-dragdrop">
+                        <div class="method-icon">
+                            <span class="material-icons">drag_indicator</span>
+                        </div>
+                        <div class="method-label">Drag & Drop</div>
+                        <div class="method-hint">Drop file here</div>
                     </div>
                 </div>
 
-                <div style="margin-top:32px;display:flex;flex-direction:column;align-items:center;gap:16px;">
-                    <button id="capture-tablet-btn" style="
-                        display:flex;align-items:center;gap:8px;color:var(--primary-500);
-                        font-weight:700;padding:12px 32px;border-radius:var(--radius-lg);
-                        border:1px solid var(--primary-100);background:none;cursor:pointer;
-                        transition:background 0.2s;
-                    ">
-                        <span class="material-icons-round">photo_camera</span>
-                        <span>Capture with Tablet Camera</span>
+                <!-- Drop Zone (for Browse & Drag-Drop) -->
+                <div class="drop-zone" id="upload-drop-zone">
+                    <input type="file" id="file-input" accept="image/jpeg,image/png,image/jpg" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;" />
+                    <div class="drop-icon">
+                        <span class="material-icons" id="drop-zone-icon">cloud_upload</span>
+                    </div>
+                    <h3 id="drop-zone-title">Upload clinical document</h3>
+                    <p id="drop-zone-subtitle">Click to browse or drag files here</p>
+                    <div class="file-types">
+                        <span>Supported: JPG, PNG</span>
+                        <div class="sep"></div>
+                        <span>Max Size: 10MB</span>
+                    </div>
+                </div>
+
+                <!-- Image Preview (shown after file is selected) -->
+                <div class="upload-preview" id="upload-preview">
+                    <div class="preview-img-wrap">
+                        <img id="preview-img" alt="Selected document" />
+                    </div>
+                    <div class="preview-info">
+                        <div class="info-badge">
+                            <span class="material-icons">description</span>
+                            <span id="preview-filename">—</span>
+                        </div>
+                        <div class="info-badge">
+                            <span class="material-icons">straighten</span>
+                            <span id="preview-filesize">—</span>
+                        </div>
+                        <div class="info-badge">
+                            <span class="material-icons">check_circle</span>
+                            <span>Ready for OCR</span>
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="preview-change-btn" id="preview-change-btn">
+                            <span class="material-icons" style="font-size:16px;">swap_horiz</span>
+                            Change Image
+                        </button>
+                        <button class="preview-proceed-btn" id="preview-proceed-btn">
+                            <span class="material-icons" style="font-size:16px;">rocket_launch</span>
+                            Start OCR Processing
+                        </button>
+                    </div>
+                </div>
+
+                <!-- HIPAA footer -->
+                <div style="margin-top:20px;text-align:center;">
+                    <p style="font-size:0.6rem;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:0.15em;font-style:italic;display:flex;align-items:center;justify-content:center;gap:6px;">
+                        <span class="material-icons" style="font-size:14px;color:var(--success);">verified_user</span>
+                        Secure HIPAA-Compliant Gateway · End-to-End Encrypted
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ CAMERA MODAL ═══════ -->
+        <div id="camera-modal" class="camera-modal">
+            <div class="camera-modal-inner">
+                <div class="camera-modal-header">
+                    <h3>
+                        <span class="material-icons" style="font-size:18px;">photo_camera</span>
+                        Document Camera
+                    </h3>
+                    <button class="close-cam" id="close-camera-btn">
+                        <span class="material-icons" style="font-size:20px;">close</span>
                     </button>
-                    <p style="font-size:0.625rem;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:0.15em;font-style:italic;">Secure HIPAA-Compliant Gateway</p>
+                </div>
+                <div class="camera-video-wrap" id="camera-video-wrap">
+                    <video id="camera-video" autoplay playsinline></video>
+                    <canvas id="camera-canvas" style="display:none;"></canvas>
+                    <div class="cam-placeholder" id="cam-placeholder">
+                        <span class="material-icons" style="font-size:48px;display:block;margin-bottom:8px;">videocam_off</span>
+                        <p style="font-size:0.8rem;font-weight:600;">Initializing camera...</p>
+                    </div>
+                </div>
+                <div class="camera-controls" id="camera-controls-live">
+                    <button class="capture-btn" id="capture-photo-btn" title="Capture Photo">
+                        <span class="material-icons">camera</span>
+                    </button>
+                </div>
+                <div class="camera-controls" id="camera-controls-review" style="display:none;">
+                    <button class="retake-btn" id="retake-btn">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;">replay</span>
+                        Retake
+                    </button>
+                    <button class="use-photo-btn" id="use-photo-btn">
+                        <span class="material-icons" style="font-size:16px;vertical-align:middle;">check</span>
+                        Use This Photo
+                    </button>
                 </div>
             </div>
         </div>
@@ -964,24 +1223,195 @@ export async function renderOCRUpload() {
     });
 
     /* ═══════════════ STEP 2: FILE UPLOAD ═══════════════ */
-    const uploadArea = document.getElementById('upload-area');
-    uploadArea.addEventListener('click', (e) => {
-        if (e.target !== fileInput) fileInput.click();
+    const dropZone = document.getElementById('upload-drop-zone');
+    const uploadPreview = document.getElementById('upload-preview');
+    const previewImg = document.getElementById('preview-img');
+    const methodCards = document.querySelectorAll('.upload-method-card');
+    let cameraStream = null;
+
+    // ── Method Card Toggle ──
+    methodCards.forEach(card => {
+        card.addEventListener('click', () => {
+            methodCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            const method = card.dataset.method;
+
+            if (method === 'camera') {
+                openCamera();
+            } else if (method === 'browse') {
+                fileInput.click();
+            }
+            // dragdrop just highlights the drop zone text
+            if (method === 'dragdrop') {
+                document.getElementById('drop-zone-title').textContent = 'Drop your file here';
+                document.getElementById('drop-zone-subtitle').textContent = 'Release to upload';
+                document.getElementById('drop-zone-icon').textContent = 'file_download';
+            } else {
+                document.getElementById('drop-zone-title').textContent = 'Upload clinical document';
+                document.getElementById('drop-zone-subtitle').textContent = 'Click to browse or drag files here';
+                document.getElementById('drop-zone-icon').textContent = 'cloud_upload';
+            }
+        });
     });
 
+    // ── File Input Change ──
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length) handleFile(e.target.files[0]);
     });
 
+    // ── Drag & Drop ──
+    let dragCounter = 0;
+    dropZone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        dropZone.classList.add('drag-active');
+    });
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            dropZone.classList.remove('drag-active');
+        }
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        dropZone.classList.remove('drag-active');
+        const files = e.dataTransfer.files;
+        if (files.length) handleFile(files[0]);
+    });
+
+    // ── Handle File (shows preview, doesn't auto-start OCR) ──
     function handleFile(file) {
         if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
             showToast('Only JPG/PNG images are supported', 'error');
             return;
         }
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('File exceeds 10MB limit', 'error');
+            return;
+        }
         selectedFile = file;
-        viewerImg.src = URL.createObjectURL(file);
-        startOCRProcess();
+        const url = URL.createObjectURL(file);
+        previewImg.src = url;
+        viewerImg.src = url;
+
+        // File metadata
+        document.getElementById('preview-filename').textContent = file.name.length > 25
+            ? file.name.slice(0, 22) + '...' + file.name.split('.').pop()
+            : file.name;
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        document.getElementById('preview-filesize').textContent = sizeMB + ' MB';
+
+        // Show preview, hide drop zone
+        dropZone.style.display = 'none';
+        uploadPreview.classList.add('visible');
     }
+
+    // ── Preview Actions ──
+    document.getElementById('preview-change-btn').addEventListener('click', () => {
+        uploadPreview.classList.remove('visible');
+        dropZone.style.display = '';
+        selectedFile = null;
+        fileInput.value = '';
+    });
+
+    document.getElementById('preview-proceed-btn').addEventListener('click', () => {
+        if (!selectedFile) {
+            showToast('No file selected', 'error');
+            return;
+        }
+        startOCRProcess();
+    });
+
+    // ══════════ CAMERA ══════════
+    const cameraModal = document.getElementById('camera-modal');
+    const cameraVideo = document.getElementById('camera-video');
+    const cameraCanvas = document.getElementById('camera-canvas');
+    const camPlaceholder = document.getElementById('cam-placeholder');
+    const controlsLive = document.getElementById('camera-controls-live');
+    const controlsReview = document.getElementById('camera-controls-review');
+
+    async function openCamera() {
+        cameraModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        controlsLive.style.display = 'flex';
+        controlsReview.style.display = 'none';
+        cameraVideo.style.display = 'block';
+        camPlaceholder.style.display = 'flex';
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+            });
+            cameraVideo.srcObject = cameraStream;
+            camPlaceholder.style.display = 'none';
+        } catch (err) {
+            camPlaceholder.innerHTML = `
+                <span class="material-icons" style="font-size:48px;display:block;margin-bottom:8px;color:var(--error);">videocam_off</span>
+                <p style="font-size:0.8rem;font-weight:600;color:var(--error);">Camera not available</p>
+                <p style="font-size:0.7rem;color:var(--gray-500);margin-top:4px;">Please allow camera access or use file upload instead</p>
+            `;
+            showToast('Camera not available — try file upload', 'error');
+        }
+    }
+
+    function closeCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+        cameraVideo.srcObject = null;
+        cameraModal.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('close-camera-btn').addEventListener('click', closeCamera);
+
+    // Capture photo
+    document.getElementById('capture-photo-btn').addEventListener('click', () => {
+        cameraCanvas.width = cameraVideo.videoWidth;
+        cameraCanvas.height = cameraVideo.videoHeight;
+        cameraCanvas.getContext('2d').drawImage(cameraVideo, 0, 0);
+
+        // Show captured image, hide live video
+        cameraVideo.style.display = 'none';
+        cameraCanvas.style.display = 'block';
+        controlsLive.style.display = 'none';
+        controlsReview.style.display = 'flex';
+    });
+
+    // Retake
+    document.getElementById('retake-btn').addEventListener('click', () => {
+        cameraCanvas.style.display = 'none';
+        cameraVideo.style.display = 'block';
+        controlsLive.style.display = 'flex';
+        controlsReview.style.display = 'none';
+    });
+
+    // Use captured photo
+    document.getElementById('use-photo-btn').addEventListener('click', () => {
+        cameraCanvas.toBlob((blob) => {
+            if (!blob) {
+                showToast('Failed to capture image', 'error');
+                return;
+            }
+            const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            closeCamera();
+            handleFile(file);
+        }, 'image/jpeg', 0.92);
+    });
+
+    // Close camera on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && cameraModal.classList.contains('open')) {
+            closeCamera();
+        }
+    });
 
     /* ═══════════════ STEP 3: OCR PROCESSING ═══════════════ */
     async function startOCRProcess() {
