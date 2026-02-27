@@ -495,61 +495,18 @@ def require_role(required_roles: list[StaffRole]):
 
 class AuthService:
     """
-    Authentication service with mock database.
-    In production: Replace with PostgreSQL/MySQL integration.
+    Authentication service — backed by SQLite database.
+    Staff accounts are seeded by db/seed.py on first run.
     """
 
     def __init__(self):
         self.jwt_manager = JWTManager()
         self.rate_limiter = RateLimiter()
         self.password_manager = PasswordManager()
-        self._staff_db: dict[str, StaffRecord] = {}  # staff_id -> staff_data
-        self._init_mock_staff()  # Initialize demo accounts
 
-    def _init_mock_staff(self):
-        """Initialize mock staff accounts for development/testing"""
-        mock_staff = [
-            {
-                "staff_id": "nurse_001",
-                "full_name": "Nurse Priya",
-                "role": StaffRole.NURSE,
-                "password": "Nurse@2024!",
-                "department": "General Ward"
-            },
-            {
-                "staff_id": "dr_anand",
-                "full_name": "Dr. Anand Kumar",
-                "role": StaffRole.DOCTOR,
-                "password": "Doctor@2024!",
-                "department": "Internal Medicine"
-            },
-            {
-                "staff_id": "admin_001",
-                "full_name": "Admin User",
-                "role": StaffRole.ADMIN,
-                "password": "Admin@2024!",
-                "department": "Administration"
-            }
-        ]
-
-        for staff in mock_staff:
-            staff_id = staff["staff_id"]
-            hashed_pw = self.password_manager.hash_password(staff["password"])
-            self._staff_db[staff_id] = {
-                "staff_id": staff_id,
-                "full_name": staff["full_name"],
-                "role": staff["role"],
-                "password_hash": hashed_pw,
-                "department": staff["department"],
-                "status": StaffStatus.ACTIVE,
-                "failed_attempts": 0,
-                "locked_until": None,
-                "last_login": None,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "last_password_change": None
-            }
-
-        logger.info(f"Initialized {len(self._staff_db)} mock staff accounts")
+    def _get_db(self):
+        from db.database import SessionLocal
+        return SessionLocal()
 
     async def login(
             self,
@@ -571,94 +528,99 @@ class AuthService:
                 account_locked=True
             )
 
-        # Verify staff exists
-        staff = self._staff_db.get(staff_id)
-        if not staff:
-            # Record failed attempt (prevent enumeration attacks)
-            _ = self.rate_limiter.record_attempt(staff_id, success=False)
-            logger.warning(f"Login attempt with invalid staff ID: {staff_id}")
-            return LoginResponse(
-                success=False,
-                message="Invalid credentials",
-                remaining_attempts=MAX_LOGIN_ATTEMPTS - 1
-            )
+        # Verify staff exists in database
+        db = self._get_db()
+        try:
+            from db import crud
+            staff = crud.get_staff(db, staff_id)
 
-        # Check account status
-        if staff["status"] != StaffStatus.ACTIVE:
-            logger.warning(f"Login attempt on inactive account: {staff_id}")
-            return LoginResponse(
-                success=False,
-                message="Account is not active"
-            )
-
-        # Verify password
-        password_valid = self.password_manager.verify_password(
-            credentials.password,
-            staff["password_hash"]
-        )
-
-        # Record attempt (success/failure)
-        attempt_result = self.rate_limiter.record_attempt(staff_id, password_valid)
-
-        if not password_valid:
-            logger.warning(
-                f"Failed login attempt | Staff: {staff_id} | " +
-                f"IP: {client_ip or 'unknown'} | " +
-                f"Remaining attempts: {attempt_result['remaining_attempts']}"
-            )
-
-            if attempt_result["locked"]:
-                # Update staff record
-                staff["status"] = StaffStatus.LOCKED.value
-                staff["locked_until"] = (
-                        datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
-                ).isoformat()
-
+            if not staff:
+                _ = self.rate_limiter.record_attempt(staff_id, success=False)
+                logger.warning(f"Login attempt with invalid staff ID: {staff_id}")
                 return LoginResponse(
                     success=False,
-                    message=f"Account locked for {LOCKOUT_DURATION_MINUTES} minutes",
-                    account_locked=True,
-                    remaining_attempts=0
+                    message="Invalid credentials",
+                    remaining_attempts=MAX_LOGIN_ATTEMPTS - 1
                 )
 
-            return LoginResponse(
-                success=False,
-                message="Invalid credentials",
-                remaining_attempts=attempt_result["remaining_attempts"]
+            # Check account status
+            if staff.status != "active":
+                logger.warning(f"Login attempt on inactive account: {staff_id}")
+                return LoginResponse(
+                    success=False,
+                    message="Account is not active"
+                )
+
+            # Verify password
+            password_valid = self.password_manager.verify_password(
+                credentials.password,
+                staff.password_hash
             )
 
-        # Successful login - generate tokens
-        access_token, access_expire = self.jwt_manager.create_access_token(
-            staff_id=staff_id,
-            role=staff["role"]
-        )
+            # Record attempt (success/failure)
+            attempt_result = self.rate_limiter.record_attempt(staff_id, password_valid)
 
-        refresh_token, refresh_expire = self.jwt_manager.create_refresh_token(
-            staff_id=staff_id,
-            role=staff["role"]
-        )
+            if not password_valid:
+                logger.warning(
+                    f"Failed login attempt | Staff: {staff_id} | "
+                    f"IP: {client_ip or 'unknown'} | "
+                    f"Remaining attempts: {attempt_result['remaining_attempts']}"
+                )
 
-        # Update staff record
-        staff["last_login"] = datetime.now(timezone.utc).isoformat()
-        staff["failed_attempts"] = 0
+                if attempt_result["locked"]:
+                    staff.status = "locked"
+                    staff.locked_until = (
+                        datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+                    )
+                    db.commit()
 
-        # Log successful login (PHI-safe)
-        logger.info(
-            f"Successful login | Staff: {staff_id} | Role: {staff['role']} | IP: {client_ip or 'unknown'}"
-        )
+                    return LoginResponse(
+                        success=False,
+                        message=f"Account locked for {LOCKOUT_DURATION_MINUTES} minutes",
+                        account_locked=True,
+                        remaining_attempts=0
+                    )
 
-        return LoginResponse(
-            success=True,
-            token=TokenResponse(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                token_type="bearer",
-                expires_in=int((access_expire - datetime.now(timezone.utc)).total_seconds()),
+                crud.update_staff_failed_attempt(db, staff_id)
+                return LoginResponse(
+                    success=False,
+                    message="Invalid credentials",
+                    remaining_attempts=attempt_result["remaining_attempts"]
+                )
+
+            # Successful login - generate tokens
+            access_token, access_expire = self.jwt_manager.create_access_token(
                 staff_id=staff_id,
-                role=staff["role"]
-            ),
-            message="Login successful"
-        )
+                role=staff.role
+            )
+
+            refresh_token, refresh_expire = self.jwt_manager.create_refresh_token(
+                staff_id=staff_id,
+                role=staff.role
+            )
+
+            # Update staff record in DB
+            crud.update_staff_login(db, staff_id)
+
+            # Log successful login (PHI-safe)
+            logger.info(
+                f"Successful login | Staff: {staff_id} | Role: {staff.role} | IP: {client_ip or 'unknown'}"
+            )
+
+            return LoginResponse(
+                success=True,
+                token=TokenResponse(
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                    token_type="bearer",
+                    expires_in=int((access_expire - datetime.now(timezone.utc)).total_seconds()),
+                    staff_id=staff_id,
+                    role=staff.role
+                ),
+                message="Login successful"
+            )
+        finally:
+            db.close()
 
     async def logout(self, token_payload: TokenPayload) -> bool:
         """Revoke token (logout)"""
@@ -705,42 +667,52 @@ class AuthService:
             new_password: str
     ) -> bool:
         """Change staff password (requires current password verification)"""
-        staff = self._staff_db.get(staff_id)
-        if not staff:
-            return False
+        db = self._get_db()
+        try:
+            from db import crud
+            staff = crud.get_staff(db, staff_id)
+            if not staff:
+                return False
 
-        # Verify old password
-        if not self.password_manager.verify_password(old_password, staff["password_hash"]):
-            logger.warning(f"Password change failed - invalid old password: {staff_id}")
-            return False
+            # Verify old password
+            if not self.password_manager.verify_password(old_password, staff.password_hash):
+                logger.warning(f"Password change failed - invalid old password: {staff_id}")
+                return False
 
-        # Hash and update new password
-        staff["password_hash"] = self.password_manager.hash_password(new_password)
-        staff["last_password_change"] = datetime.now(timezone.utc).isoformat()
+            # Hash and update new password
+            new_hash = self.password_manager.hash_password(new_password)
+            crud.update_staff_password(db, staff_id, new_hash)
 
-        # Reset failed attempts
-        self.rate_limiter.reset(staff_id)
+            # Reset failed attempts
+            self.rate_limiter.reset(staff_id)
 
-        logger.info(f"Password changed successfully: {staff_id}")
-        return True
+            logger.info(f"Password changed successfully: {staff_id}")
+            return True
+        finally:
+            db.close()
 
     async def get_staff_profile(self, staff_id: str) -> Optional[StaffProfile]:
         """Get staff profile (PHI-safe - excludes password hash)"""
-        staff = self._staff_db.get(staff_id)
-        if not staff:
-            return None
+        db = self._get_db()
+        try:
+            from db import crud
+            staff = crud.get_staff(db, staff_id)
+            if not staff:
+                return None
 
-        return StaffProfile(
-            staff_id=staff["staff_id"],
-            full_name=staff["full_name"],
-            role=StaffRole(staff["role"]),
-            status=StaffStatus(staff["status"]),
-            department=staff.get("department"),
-            last_login=datetime.fromisoformat(t) if (t := staff.get("last_login")) else None,
-            failed_attempts=staff.get("failed_attempts", 0),
-            locked_until=datetime.fromisoformat(t) if (t := staff.get("locked_until")) else None,
-            created_at=datetime.fromisoformat(staff["created_at"])
-        )
+            return StaffProfile(
+                staff_id=staff.staff_id,
+                full_name=staff.full_name,
+                role=StaffRole(staff.role),
+                status=StaffStatus(staff.status),
+                department=staff.department,
+                last_login=staff.last_login,
+                failed_attempts=staff.failed_attempts or 0,
+                locked_until=staff.locked_until,
+                created_at=staff.created_at or datetime.now(timezone.utc)
+            )
+        finally:
+            db.close()
 
 
 # ======================

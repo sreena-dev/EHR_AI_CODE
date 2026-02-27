@@ -4,7 +4,7 @@
  */
 import { renderAppShell } from '../components/app-shell.js';
 import { getCurrentUser } from '../api/auth.js';
-import { uploadPrescription, searchPatients, registerPatient } from '../api/nurse.js';
+import { uploadPrescription, searchPatients, registerPatient, createEncounter } from '../api/nurse.js';
 import { showToast } from '../components/toast.js';
 
 export async function renderOCRUpload() {
@@ -1204,15 +1204,20 @@ export async function renderOCRUpload() {
                 try {
                     const encs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
                     const nextNum = (encs.length + 1).toString().padStart(3, '0');
-                    encs.push({
+                    const regEnc = {
                         id: `REG-${new Date().getFullYear()}-${nextNum}`,
                         patient_name: selectedPatient.name,
                         type: 'Patient Registration',
                         status: 'Completed',
                         time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                         patient_id: selectedPatient.id,
-                    });
+                        age: selectedPatient.age || null,
+                        gender: selectedPatient.gender || '',
+                    };
+                    encs.push(regEnc);
                     localStorage.setItem('ocr_encounters', JSON.stringify(encs));
+                    // Also sync to backend
+                    createEncounter(regEnc).catch(() => { });
                 } catch (e) { /* silent */ }
             } catch (err) {
                 showToast(err.message || 'Registration failed', 'error');
@@ -1709,9 +1714,13 @@ export async function renderOCRUpload() {
                 time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
                 vitals: currentVitals,
                 patient_id: selectedPatient?.id || null,
+                age: selectedPatient?.age || null,
+                gender: selectedPatient?.gender || '',
             };
             existingEncs.push(encounter);
             localStorage.setItem('ocr_encounters', JSON.stringify(existingEncs));
+            // Also sync to backend
+            createEncounter(encounter).catch(() => { });
 
             // Display success
             document.getElementById('success-enc-id').textContent = encId;
