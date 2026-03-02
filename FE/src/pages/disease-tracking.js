@@ -28,7 +28,7 @@ export async function renderDiseaseTracking() {
                   <th class="px-6 py-4">Language</th>
                   <th class="px-6 py-4">Status</th>
                   <th class="px-6 py-4">Check-in</th>
-                  <th class="px-6 py-4 text-right">Actions</th>
+
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 text-sm">
@@ -52,9 +52,7 @@ export async function renderDiseaseTracking() {
                     </span>
                   </td>
                   <td class="px-6 py-4 text-slate-600 font-mono">10:45 AM</td>
-                  <td class="px-6 py-4 text-right">
-                    <button class="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-medium text-slate-700 hover:border-[#2563EB]">Review</button>
-                  </td>
+
                 </tr>
                 <tr class="hover:bg-slate-50 transition-colors">
                   <td class="px-6 py-4">
@@ -76,9 +74,7 @@ export async function renderDiseaseTracking() {
                     </span>
                   </td>
                   <td class="px-6 py-4 text-slate-600 font-mono">10:50 AM</td>
-                  <td class="px-6 py-4 text-right">
-                    <button class="px-3 py-1 bg-[#2563EB] text-white rounded text-xs font-medium hover:bg-blue-700">Start</button>
-                  </td>
+
                 </tr>
               </tbody>
             </table>
