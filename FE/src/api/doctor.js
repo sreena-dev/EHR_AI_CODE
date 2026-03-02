@@ -79,3 +79,35 @@ export async function verifyNote(encounterId, patientId, verifiedNote) {
     }
     return data;
 }
+
+/**
+ * Fetch upcoming patients for the doctor dashboard
+ * These are encounters created by nurses that haven't been completed yet.
+ * @returns {Promise<{upcoming: Array, counts: {total, waiting, in_progress, completed}}>}
+ */
+export async function fetchUpcomingPatients() {
+    const res = await authFetch('/api/doctor/upcoming-patients');
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to load upcoming patients');
+    }
+
+    return res.json();
+}
+
+/**
+ * Fetch full patient detail: demographics, encounters, OCR results, vitals
+ * @param {string} patientId
+ * @returns {Promise<{patient: Object, encounters: Array}>}
+ */
+export async function fetchPatientDetail(patientId) {
+    const res = await authFetch(`/api/doctor/patient-detail?patient_id=${encodeURIComponent(patientId)}`);
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to load patient detail');
+    }
+
+    return res.json();
+}

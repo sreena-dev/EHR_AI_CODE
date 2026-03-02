@@ -97,7 +97,7 @@ export async function searchPatients(query = '') {
 
 /**
  * Register a new patient
- * @param {{name:string, age:number, gender:string, phone:string, address:string}} data
+ * @param {{name:string, age:number, gender:string, phone:string, address:string, force?:boolean}} data
  * @returns {Promise<{patient: Object, message: string}>}
  */
 export async function registerPatient(data) {
@@ -107,9 +107,38 @@ export async function registerPatient(data) {
         body: JSON.stringify(data),
     });
 
+    if (res.status === 409) {
+        // Duplicate detected — return structured error so UI can prompt
+        const body = await res.json().catch(() => ({}));
+        const err = new Error(body.detail || 'Duplicate patient found');
+        err.duplicate = true;
+        err.existingPatient = body.existing_patient || null;
+        throw err;
+    }
+
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Patient registration failed');
+    }
+
+    return res.json();
+}
+
+/**
+ * Create a new encounter and add it to the patient queue on the backend
+ * @param {{patient_name:string, patient_id:string, type:string, status:string, age:number|string, gender:string, doctor:string}} data
+ * @returns {Promise<{encounter: Object, message: string}>}
+ */
+export async function createEncounter(data) {
+    const res = await authFetch('/api/nurse/encounters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to create encounter');
     }
 
     return res.json();
