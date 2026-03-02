@@ -75,6 +75,11 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(doctor_router)
 
+    # Initialize database (create tables + seed default data)
+    from db.database import init_db
+    init_db()
+    logger.info("Database initialized successfully")
+
     @app.get("/health")
     async def health_check():
         """Lightweight health check for load balancers"""

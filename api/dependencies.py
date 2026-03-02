@@ -31,24 +31,22 @@ def get_or_create_workflow(
     return _WORKFLOW_REGISTRY[key]
 
 def verify_staff_role(required_roles: list[str]) -> Callable:
-    """Role-based access control for clinical endpoints"""
+    """Role-based access control for clinical endpoints — queries the database."""
     async def role_checker(
-        staff_id: str = Depends(get_current_staff)  # Implemented in auth.py
+        staff_id: str = Depends(get_current_staff)
     ) -> str:
-        # In production: Query staff DB for roles
-        # Mock implementation for now:
-        mock_staff_roles = {
-            "nurse_001": ["nurse"],
-            "dr_anand": ["doctor"],
-            "nurse_id_456": ["nurse"],
-            "dr_anand_123": ["doctor"],
-            "admin_001": ["admin", "nurse"]
-        }
-        roles = mock_staff_roles.get(staff_id, [])
-        if not any(role in required_roles for role in roles):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions for this operation"
-            )
-        return staff_id
+        from db.database import SessionLocal
+        from db import crud
+
+        db = SessionLocal()
+        try:
+            roles = crud.get_staff_roles(db, staff_id)
+            if not any(role in required_roles for role in roles):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions for this operation"
+                )
+            return staff_id
+        finally:
+            db.close()
     return role_checker
