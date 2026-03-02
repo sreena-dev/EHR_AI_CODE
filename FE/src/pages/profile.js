@@ -72,10 +72,7 @@ export async function renderProfile() {
                   <span class="text-[10px] font-bold text-slate-400 uppercase">${isDoctor ? 'Total Consults' : 'Total Scans'}</span>
                   <span class="text-sm font-bold text-slate-900">${isDoctor ? profileData.consultations.toLocaleString() : profileData.scansProcessed.toLocaleString()}</span>
                 </div>
-                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span class="text-[10px] font-bold text-slate-400 uppercase">Patient Rating</span>
-                  <span class="text-sm font-bold text-amber-600">${profileData.avgRating} <span class="text-[10px]">★</span></span>
-                </div>
+
              </div>
           </div>
         </div>

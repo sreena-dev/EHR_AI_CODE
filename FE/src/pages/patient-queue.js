@@ -4,7 +4,7 @@
  */
 import { renderAppShell } from '../components/app-shell.js';
 import { getCurrentUser } from '../api/auth.js';
-import { fetchQueueStats } from '../api/nurse.js';
+import { fetchQueueStats, searchPatients, createEncounter } from '../api/nurse.js';
 import { showToast } from '../components/toast.js';
 
 /* ── Status → badge class mapping ── */
@@ -266,15 +266,15 @@ export async function renderPatientQueue() {
           <div class="form-field">
             <label>Patient ID <span class="req">*</span></label>
             <div style="position:relative;">
-              <input type="text" placeholder="Format: PID-XXXXX" value="PID-9822" style="color:var(--primary-500);font-weight:700;padding-right:40px;" />
-              <span class="material-icons" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--success);font-size:20px;">check_circle</span>
+              <input type="text" id="enc-patient-id" placeholder="Format: PID-XXXXX" style="font-weight:600;padding-right:40px;" />
             </div>
           </div>
           <div class="form-field">
-            <label>Patient Search</label>
+            <label>Patient Name <span class="req">*</span></label>
             <div style="position:relative;">
               <span class="material-icons" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:18px;">search</span>
-              <input type="text" placeholder="Search by name, ID or phone..." style="padding-left:40px;" />
+              <input type="text" id="enc-patient-name" placeholder="Search by name, ID or phone..." style="padding-left:40px;" />
+              <div id="enc-search-results" style="position:absolute;top:100%;left:0;right:0;z-index:10;background:white;border:1px solid var(--gray-200);border-radius:var(--radius-md);max-height:200px;overflow-y:auto;display:none;box-shadow:var(--shadow-lg);"></div>
             </div>
           </div>
 
@@ -291,18 +291,18 @@ export async function renderPatientQueue() {
           <div class="two-col">
             <div class="form-field">
               <label>Language</label>
-              <select>
-                <option>English</option>
-                <option>Tamil</option>
-                <option>Hindi</option>
+              <select id="enc-language">
+                <option value="en">English</option>
+                <option value="ta">Tamil</option>
+                <option value="hi">Hindi</option>
               </select>
             </div>
             <div class="form-field">
               <label>Visit Type</label>
-              <select>
-                <option>Standard Consult</option>
-                <option>Follow-up</option>
-                <option>Emergency</option>
+              <select id="enc-visit-type">
+                <option value="Standard Consult">Standard Consult</option>
+                <option value="Follow-up">Follow-up</option>
+                <option value="Emergency">Emergency</option>
               </select>
             </div>
           </div>
@@ -353,7 +353,7 @@ export async function renderPatientQueue() {
   const activePath = user?.role === 'doctor' ? '/doctor/queue' : '/nurse/queue';
   renderAppShell('Patient Queue', bodyHTML, activePath);
 
-  /* ═══════════════ DATA FETCHING ═══════════════ */
+  /* ═══════════════ DATA FETCHING (database-backed) ═══════════════ */
   let patients = [];
   let counts = { total: 0, waiting: 0, in_progress: 0, completed: 0 };
 
@@ -594,6 +594,13 @@ export async function renderPatientQueue() {
 
   document.getElementById('new-encounter-btn')?.addEventListener('click', () => {
     newEncounterModal.classList.add('visible');
+    // Reset form fields on open
+    const pidInput = document.getElementById('enc-patient-id');
+    const nameInput = document.getElementById('enc-patient-name');
+    const complaintArea = document.getElementById('chief-complaint-textarea');
+    if (pidInput) pidInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (complaintArea) complaintArea.value = '';
   });
 
   const hideNewEncounterModal = () => newEncounterModal.classList.remove('visible');
@@ -601,13 +608,92 @@ export async function renderPatientQueue() {
   document.getElementById('close-new-encounter-modal')?.addEventListener('click', hideNewEncounterModal);
   document.getElementById('cancel-new-encounter-btn')?.addEventListener('click', hideNewEncounterModal);
 
-  document.getElementById('save-new-encounter-btn')?.addEventListener('click', () => {
-    hideNewEncounterModal();
-    showToast('Encounter created successfully', 'success');
-    if (user?.role === 'doctor') {
-      location.hash = '#/doctor/consultation';
-    } else {
-      location.hash = '#/nurse/ocr';
+  /* ── Patient Name search typeahead ── */
+  let searchTimeout = null;
+  const nameInput = document.getElementById('enc-patient-name');
+  const pidInput = document.getElementById('enc-patient-id');
+  const searchResults = document.getElementById('enc-search-results');
+
+  nameInput?.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const query = nameInput.value.trim();
+    if (query.length < 2) { searchResults.style.display = 'none'; return; }
+    searchTimeout = setTimeout(async () => {
+      try {
+        const data = await searchPatients(query);
+        const pts = data.patients || [];
+        if (pts.length === 0) {
+          searchResults.innerHTML = '<div style="padding:12px;color:var(--gray-400);font-size:0.875rem;">No patients found</div>';
+        } else {
+          searchResults.innerHTML = pts.map(p => `
+            <div class="search-result-item" data-pid="${p.id}" data-name="${p.name}" data-age="${p.age || ''}" data-gender="${p.gender || ''}"
+                 style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--gray-100);font-size:0.875rem;transition:background 0.15s;">
+              <strong>${p.name}</strong> <span style="color:var(--gray-400);">(${p.id})</span>
+              ${p.age ? `<span style="color:var(--gray-500);margin-left:8px;">${p.age}y/${p.gender || '?'}</span>` : ''}
+            </div>
+          `).join('');
+          searchResults.querySelectorAll('.search-result-item').forEach(item => {
+            item.addEventListener('mouseenter', () => item.style.background = 'var(--primary-50)');
+            item.addEventListener('mouseleave', () => item.style.background = '');
+            item.addEventListener('click', () => {
+              pidInput.value = item.dataset.pid;
+              nameInput.value = item.dataset.name;
+              searchResults.style.display = 'none';
+            });
+          });
+        }
+        searchResults.style.display = 'block';
+      } catch { searchResults.style.display = 'none'; }
+    }, 300);
+  });
+
+  // Hide search results on click outside
+  document.addEventListener('click', (e) => {
+    if (!searchResults?.contains(e.target) && e.target !== nameInput) {
+      searchResults.style.display = 'none';
+    }
+  });
+
+  /* ── Save & Proceed → calls backend API ── */
+  document.getElementById('save-new-encounter-btn')?.addEventListener('click', async () => {
+    const patientId = document.getElementById('enc-patient-id')?.value.trim();
+    const patientName = document.getElementById('enc-patient-name')?.value.trim();
+    const complaint = document.getElementById('chief-complaint-textarea')?.value.trim();
+    const visitType = document.getElementById('enc-visit-type')?.value || 'Standard Consult';
+
+    // Validate required fields
+    if (!patientName) {
+      showToast('Patient name is required', 'error');
+      return;
+    }
+
+    const saveBtn = document.getElementById('save-new-encounter-btn');
+    saveBtn.disabled = true;
+    saveBtn.querySelector('span:first-child').textContent = 'Saving…';
+
+    try {
+      const result = await createEncounter({
+        patient_name: patientName,
+        patient_id: patientId || undefined,
+        type: visitType,
+        status: 'Pending OCR',
+        chief_complaint: complaint || undefined,
+      });
+
+      hideNewEncounterModal();
+      showToast('Encounter created successfully', 'success');
+
+      // Navigate to OCR upload
+      if (user?.role === 'doctor') {
+        location.hash = '#/doctor/consultation';
+      } else {
+        location.hash = '#/nurse/ocr';
+      }
+    } catch (err) {
+      showToast(`Failed to create encounter: ${err.message}`, 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.querySelector('span:first-child').textContent = 'Save & Proceed';
     }
   });
 

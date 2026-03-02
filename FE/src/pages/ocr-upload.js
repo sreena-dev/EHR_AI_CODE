@@ -1200,30 +1200,60 @@ export async function renderOCRUpload() {
                 selectedPatient = result.patient;
                 showToast(`Patient ${selectedPatient.id} registered successfully`, 'success');
 
-                // Save registration encounter for dashboard sync
+                // Create registration encounter in backend DB
                 try {
-                    const encs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
-                    const nextNum = (encs.length + 1).toString().padStart(3, '0');
-                    const regEnc = {
-                        id: `REG-${new Date().getFullYear()}-${nextNum}`,
+                    await createEncounter({
                         patient_name: selectedPatient.name,
+                        patient_id: selectedPatient.id,
                         type: 'Patient Registration',
                         status: 'Completed',
-                        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                        patient_id: selectedPatient.id,
                         age: selectedPatient.age || null,
                         gender: selectedPatient.gender || '',
-                    };
-                    encs.push(regEnc);
-                    localStorage.setItem('ocr_encounters', JSON.stringify(encs));
-                    // Also sync to backend
-                    createEncounter(regEnc).catch(() => { });
-                } catch (e) { /* silent */ }
+                    });
+                } catch (e) { console.warn('Registration encounter sync failed:', e); }
             } catch (err) {
-                showToast(err.message || 'Registration failed', 'error');
-                proceedBtn.disabled = false;
-                proceedBtn.innerHTML = '<span>Continue to OCR Upload</span><span class="material-icons" style="font-size:18px;">arrow_forward</span>';
-                return;
+                // ── Handle duplicate patient detection ──
+                if (err.duplicate && err.existingPatient) {
+                    const ep = err.existingPatient;
+                    const useExisting = confirm(
+                        `⚠️ Duplicate Patient Detected!\n\n` +
+                        `A patient with similar details already exists:\n` +
+                        `  Name: ${ep.name}\n` +
+                        `  ID: ${ep.id}\n` +
+                        `  Age: ${ep.age || '—'} / Gender: ${ep.gender || '—'}\n` +
+                        `  Phone: ${ep.phone || '—'}\n\n` +
+                        `Click OK to use the existing patient record.\n` +
+                        `Click Cancel to create a new record anyway.`
+                    );
+                    if (useExisting) {
+                        selectedPatient = ep;
+                        showToast(`Using existing patient: ${ep.name} (${ep.id})`, 'info');
+                    } else {
+                        // Force create new patient
+                        try {
+                            const result = await registerPatient({
+                                name: newNameInput.value.trim(),
+                                age: parseInt(newAgeInput.value),
+                                gender: newGenderInput.value,
+                                phone: newPhoneInput.value.trim(),
+                                address: newAddressInput.value.trim(),
+                                force: true,
+                            });
+                            selectedPatient = result.patient;
+                            showToast(`New patient ${selectedPatient.id} created`, 'success');
+                        } catch (forceErr) {
+                            showToast(forceErr.message || 'Registration failed', 'error');
+                            proceedBtn.disabled = false;
+                            proceedBtn.innerHTML = '<span>Continue to OCR Upload</span><span class="material-icons" style="font-size:18px;">arrow_forward</span>';
+                            return;
+                        }
+                    }
+                } else {
+                    showToast(err.message || 'Registration failed', 'error');
+                    proceedBtn.disabled = false;
+                    proceedBtn.innerHTML = '<span>Continue to OCR Upload</span><span class="material-icons" style="font-size:18px;">arrow_forward</span>';
+                    return;
+                }
             }
         }
 
@@ -1693,46 +1723,41 @@ export async function renderOCRUpload() {
 
     /* ═══════════════ STEP 4: FINALIZE ═══════════════ */
     const finalizeBtn = document.getElementById('finalize-btn-new');
-    finalizeBtn.addEventListener('click', () => {
+    finalizeBtn.addEventListener('click', async () => {
         finalizeBtn.disabled = true;
         finalizeBtn.innerHTML = '<span class="material-icons" style="font-size:16px;animation:spin 1s linear infinite;">sync</span> SAVING...';
 
-        setTimeout(() => {
-            // Generate proper encounter ID
-            const year = new Date().getFullYear();
-            const existingEncs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
-            const nextNum = (existingEncs.length + 1).toString().padStart(3, '0');
-            const encId = `ENC-${year}-${nextNum}`;
+        try {
+            // Use the encounter ID from OCR processing, or generate new one
+            const encId = currentEncId || `ENC-${new Date().getFullYear()}-${Date.now().toString().slice(-3)}`;
             currentEncId = encId;
 
-            // Save encounter to localStorage
-            const encounter = {
+            // Save encounter to backend DB
+            await createEncounter({
                 id: encId,
                 patient_name: selectedPatient?.name || '—',
+                patient_id: selectedPatient?.id || null,
                 type: 'Prescription OCR',
                 status: 'Completed',
-                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                vitals: currentVitals,
-                patient_id: selectedPatient?.id || null,
                 age: selectedPatient?.age || null,
                 gender: selectedPatient?.gender || '',
-            };
-            existingEncs.push(encounter);
-            localStorage.setItem('ocr_encounters', JSON.stringify(existingEncs));
-            // Also sync to backend
-            createEncounter(encounter).catch(() => { });
+            });
 
             // Display success
             document.getElementById('success-enc-id').textContent = encId;
             document.getElementById('success-patient-name').textContent = selectedPatient?.name || '—';
-            document.getElementById('success-nurse-name').textContent = user ? user.name || user.username : 'Nurse Priya';
+            document.getElementById('success-nurse-name').textContent = user ? user.full_name || user.staff_id : 'Nurse';
             document.getElementById('success-timestamp').textContent = new Date().toLocaleString('en-GB', {
                 day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
 
             stepVerify.style.display = 'none';
             successState.classList.add('visible');
-        }, 1500);
+        } catch (err) {
+            showToast(`Failed to save: ${err.message}`, 'error');
+            finalizeBtn.disabled = false;
+            finalizeBtn.innerHTML = 'Save & Send <span class="material-icons" style="font-size:16px;">send</span>';
+        }
     });
 
     document.getElementById('resubmit-btn').addEventListener('click', () => {
