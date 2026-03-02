@@ -74,16 +74,17 @@ export async function renderNurseDashboard() {
     </div>
 
     <!-- Quick Actions -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px; max-width: 800px;">
-      <a href="#/nurse/ocr" class="btn btn-primary" style="height: 48px;">
+    <div style="display:flex; flex-direction:row; gap:16px; margin-bottom:24px; max-width: 500px;">
+      <a href="#/nurse/ocr" class="btn btn-primary" style="height: 48px; flex:1; ">
         <span class="material-icons-outlined" style="font-size:18px">add_photo_alternate</span>
         Upload Prescription
       </a>
-      <a href="#/nurse/queue" class="btn btn-secondary" style="height: 48px;">
+      
+      <!-- a href="#/nurse/queue" class="btn btn-secondary" style="height: 48px;">
         <span class="material-icons-outlined" style="font-size:18px">groups</span>
         View Patient Queue
-      </a>
-      <a href="#/nurse/vitals" class="btn btn-primary" style="height: 48px;">
+      </a -->
+      <a href="#/nurse/vitals" class="btn btn-primary" style="height: 48px; flex:1;">
         <span class="material-icons-outlined" style="font-size:18px">monitor_heart</span>
         Add Vitals
       </a>
@@ -123,7 +124,7 @@ export async function renderNurseDashboard() {
 
   renderAppShell('Clinical Dashboard', bodyHTML, '/nurse/dashboard');
 
-  /* ── Fetch data from backend + merge with localStorage ── */
+  /* ── Fetch data from backend (database-backed) ── */
   let encounters = [];
   let counts = { total: 0, pending_ocr: 0, requires_review: 0, completed: 0 };
 
@@ -139,20 +140,6 @@ export async function renderNurseDashboard() {
         Failed to load dashboard data — ${err.message}
       </td></tr>`;
   }
-
-  // Merge localStorage encounters (from OCR finalize, vitals, patient registration)
-  try {
-    const localEncs = JSON.parse(localStorage.getItem('ocr_encounters') || '[]');
-    if (localEncs.length) {
-      // Prepend local encounters (newest first) and recalculate counts
-      encounters = [...localEncs.reverse(), ...encounters];
-      // Recalculate counts from merged data
-      counts.total = encounters.length;
-      counts.pending_ocr = encounters.filter(e => e.status === 'Pending OCR').length;
-      counts.requires_review = encounters.filter(e => e.status === 'Requires Review').length;
-      counts.completed = encounters.filter(e => e.status === 'Completed').length;
-    }
-  } catch (e) { console.warn('Could not load local encounters:', e); }
 
   /* ── Populate stat card values ── */
   document.getElementById('val-total').textContent = counts.total;
