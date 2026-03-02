@@ -1,10 +1,13 @@
 from fastapi import APIRouter, File, UploadFile, Form, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from typing import Optional
+from sqlalchemy.orm import Session
 import tempfile
 import os
 import logging
+import random
 from pathlib import Path
+from datetime import datetime
 
 from ..models.requests import OCRRquest
 from ..models.responses import OCRResultResponse, OCRErrorResponse, OCRStatus
@@ -16,70 +19,14 @@ from ..dependencies import (
 from services.ocr.exceptions import OCRError, LowConfidenceError
 from core.workflow import WorkflowState
 from services.ocr.config import LanguageMode
+from db.database import get_db
+from db import crud
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/nurse", tags=["Nurse Station"])
 
-
-# ─── Mock encounter data (replace with DB query in production) ───
-_MOCK_ENCOUNTERS = [
-    {
-        "id": "ENC-2026-001",
-        "patient_name": "Priya Sharma",
-        "type": "Prescription OCR",
-        "status": "Completed",
-        "time": "10:30 AM",
-    },
-    {
-        "id": "ENC-2026-002",
-        "patient_name": "Rajesh Kumar",
-        "type": "Lab Report",
-        "status": "Pending OCR",
-        "time": "11:15 AM",
-    },
-    {
-        "id": "ENC-2026-003",
-        "patient_name": "Meena Devi",
-        "type": "Prescription OCR",
-        "status": "Completed",
-        "time": "11:45 AM",
-    },
-    {
-        "id": "ENC-2026-004",
-        "patient_name": "Arjun Patel",
-        "type": "Prescription OCR",
-        "status": "Requires Review",
-        "time": "12:00 PM",
-    },
-    {
-        "id": "ENC-2026-005",
-        "patient_name": "Lakshmi R.",
-        "type": "Lab Report",
-        "status": "Pending OCR",
-        "time": "12:30 PM",
-    },
-    {
-        "id": "ENC-2026-006",
-        "patient_name": "Suresh M.",
-        "type": "Prescription OCR",
-        "status": "Completed",
-        "time": "01:00 PM",
-    },
-    {
-        "id": "ENC-2026-007",
-        "patient_name": "Kavitha S.",
-        "type": "Lab Report",
-        "status": "Requires Review",
-        "time": "01:30 PM",
-    },
-    {
-        "id": "ENC-2026-008",
-        "patient_name": "Ramesh V.",
-        "type": "Prescription OCR",
-        "status": "Pending OCR",
-        "time": "02:00 PM",
-    },
-]
+# Available doctors for auto-assignment
+_AVAILABLE_DOCTORS = ["Dr. Kumar", "Dr. Priya", "Dr. Anand"]
 
 
 @router.get(
@@ -88,86 +35,201 @@ _MOCK_ENCOUNTERS = [
     description="Returns encounter list and aggregate counts for the nurse dashboard.",
     dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
 )
-async def get_dashboard_stats():
+async def get_dashboard_stats(db: Session = Depends(get_db)):
     """
-    Returns today's encounters and aggregated stat counts.
-    Production: Replace _MOCK_ENCOUNTERS with a DB query filtered by today's date.
+    Returns today's encounters and aggregated stat counts from the database.
     """
-    encounters = _MOCK_ENCOUNTERS
+    encounters = crud.list_encounters(db)
+    counts = crud.get_encounter_counts(db)
 
-    total = len(encounters)
-    pending_ocr = sum(1 for e in encounters if e["status"] == "Pending OCR")
-    requires_review = sum(1 for e in encounters if e["status"] == "Requires Review")
-    completed = sum(1 for e in encounters if e["status"] == "Completed")
+    # Serialize encounters for the frontend
+    enc_list = []
+    for enc in encounters:
+        patient = crud.get_patient(db, enc.patient_id) if enc.patient_id else None
+        enc_list.append({
+            "id": enc.id,
+            "patient_name": patient.name if patient else "Unknown",
+            "type": enc.type,
+            "status": enc.status,
+            "time": enc.created_at.strftime("%I:%M %p") if enc.created_at else "—",
+        })
 
     return {
-        "encounters": encounters,
+        "encounters": enc_list,
         "counts": {
-            "total": total,
-            "pending_ocr": pending_ocr,
-            "requires_review": requires_review,
-            "completed": completed,
+            "total": counts["total"],
+            "pending_ocr": counts["pending_ocr"],
+            "requires_review": counts["requires_review"],
+            "completed": counts["completed"],
         },
     }
-
-
-# ─── Mock patient queue data ───
-_MOCK_QUEUE = [
-    {"token": "#001", "name": "Priya Sharma",  "age": 28, "gender": "F", "reason": "Follow-up",               "doctor": "Dr. Kumar", "status": "In Consultation", "wait_time": "-"},
-    {"token": "#002", "name": "Rajesh Kumar",   "age": 45, "gender": "M", "reason": "New Visit — Chest Pain",  "doctor": "Dr. Kumar", "status": "Waiting",          "wait_time": "15 min"},
-    {"token": "#003", "name": "Meena Devi",     "age": 62, "gender": "F", "reason": "Lab Review",              "doctor": "Dr. Priya", "status": "Waiting",          "wait_time": "22 min"},
-    {"token": "#004", "name": "Arjun Patel",    "age": 35, "gender": "M", "reason": "Prescription Refill",     "doctor": "Dr. Kumar", "status": "Waiting",          "wait_time": "30 min"},
-    {"token": "#005", "name": "Lakshmi R.",     "age": 50, "gender": "F", "reason": "New Visit — Diabetes",    "doctor": "Dr. Priya", "status": "Checked In",       "wait_time": "5 min"},
-    {"token": "#006", "name": "Suresh M.",      "age": 70, "gender": "M", "reason": "Follow-up — Heart",       "doctor": "Dr. Kumar", "status": "OCR Processing",   "wait_time": "8 min"},
-    {"token": "#007", "name": "Kavitha S.",     "age": 42, "gender": "F", "reason": "Skin Allergy",            "doctor": "Dr. Priya", "status": "Completed",        "wait_time": "-"},
-    {"token": "#008", "name": "Ramesh V.",      "age": 55, "gender": "M", "reason": "Blood Pressure Check",    "doctor": "Dr. Kumar", "status": "Completed",        "wait_time": "-"},
-    {"token": "#009", "name": "Anitha K.",      "age": 33, "gender": "F", "reason": "Prenatal Checkup",        "doctor": "Dr. Priya", "status": "Waiting",          "wait_time": "40 min"},
-    {"token": "#010", "name": "Deepak N.",      "age": 60, "gender": "M", "reason": "Post-Op Review",          "doctor": "Dr. Kumar", "status": "In Consultation",  "wait_time": "-"},
-]
 
 
 @router.get(
     "/queue-stats",
     summary="Patient Queue Stats",
     description="Returns the patient queue with status counts for the queue page.",
-    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+    dependencies=[Depends(verify_staff_role(["nurse", "doctor", "admin"]))],
 )
-async def get_queue_stats():
+async def get_queue_stats(db: Session = Depends(get_db)):
     """
-    Returns the patient queue list and aggregated counts.
-    Production: Replace _MOCK_QUEUE with a DB query.
+    Returns the patient queue list and aggregated counts from the database.
     """
-    patients = _MOCK_QUEUE
+    encounters = crud.list_encounters(db)
+    counts = crud.get_encounter_counts(db)
 
-    total = len(patients)
-    waiting = sum(1 for p in patients if p["status"] in ("Waiting", "Checked In"))
-    in_progress = sum(1 for p in patients if p["status"] in ("In Consultation", "OCR Processing"))
-    completed = sum(1 for p in patients if p["status"] == "Completed")
+    patients = []
+    for enc in encounters:
+        patient = crud.get_patient(db, enc.patient_id) if enc.patient_id else None
+        doctor = None
+        if enc.doctor_id:
+            doctor = crud.get_staff(db, enc.doctor_id)
+
+        patients.append({
+            "token": enc.id,
+            "name": patient.name if patient else "Unknown",
+            "age": patient.age if patient else "—",
+            "gender": patient.gender if patient else "—",
+            "reason": enc.type or "—",
+            "doctor": doctor.full_name if doctor else "—",
+            "status": enc.status or "—",
+            "wait_time": enc.created_at.strftime("%I:%M %p") if enc.created_at else "—",
+        })
 
     return {
         "patients": patients,
         "counts": {
-            "total": total,
-            "waiting": waiting,
-            "in_progress": in_progress,
-            "completed": completed,
+            "total": counts["total"],
+            "waiting": counts["waiting"],
+            "in_progress": counts["in_progress"],
+            "completed": counts["completed"],
         },
     }
 
 
-# ─── Mock patient registry (production: database) ───
-_PATIENT_REGISTRY = [
-    {"id": "PID-10001", "name": "Priya Sharma",   "age": 28, "gender": "F", "phone": "9876543210", "address": "12 MG Road, Chennai",     "registered": "2025-06-15"},
-    {"id": "PID-10002", "name": "Rajesh Kumar",    "age": 45, "gender": "M", "phone": "9876543211", "address": "45 Anna Nagar, Chennai",   "registered": "2025-08-20"},
-    {"id": "PID-10003", "name": "Meena Devi",      "age": 62, "gender": "F", "phone": "9876543212", "address": "78 T Nagar, Chennai",      "registered": "2024-12-01"},
-    {"id": "PID-10004", "name": "Arjun Patel",     "age": 35, "gender": "M", "phone": "9876543213", "address": "23 Velachery, Chennai",    "registered": "2025-11-10"},
-    {"id": "PID-10005", "name": "Lakshmi R.",      "age": 50, "gender": "F", "phone": "9876543214", "address": "56 Adyar, Chennai",        "registered": "2025-03-05"},
-    {"id": "PID-10006", "name": "Suresh M.",       "age": 70, "gender": "M", "phone": "9876543215", "address": "89 Mylapore, Chennai",     "registered": "2024-07-22"},
-    {"id": "PID-10007", "name": "Kavitha S.",      "age": 42, "gender": "F", "phone": "9876543216", "address": "34 Tambaram, Chennai",     "registered": "2025-01-18"},
-    {"id": "PID-10008", "name": "Ramesh V.",       "age": 55, "gender": "M", "phone": "9876543217", "address": "67 Porur, Chennai",        "registered": "2025-09-30"},
-]
+@router.get(
+    "/encounters",
+    summary="List Encounters",
+    description="Returns all encounters in the system.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def list_encounters_endpoint(db: Session = Depends(get_db)):
+    """List all encounters from the database."""
+    encounters = crud.list_encounters(db)
+    return {
+        "encounters": [
+            {
+                "id": enc.id,
+                "patient_id": enc.patient_id,
+                "patient_name": (crud.get_patient(db, enc.patient_id).name
+                                 if enc.patient_id and crud.get_patient(db, enc.patient_id) else "Unknown"),
+                "type": enc.type,
+                "status": enc.status,
+                "time": enc.created_at.strftime("%I:%M %p") if enc.created_at else "—",
+                "doctor": enc.doctor_id or "—",
+            }
+            for enc in encounters
+        ]
+    }
 
-_next_pid = 10009  # auto-increment for new registrations
+
+@router.post(
+    "/encounters",
+    summary="Create Encounter",
+    description="Creates a new encounter and adds it to the patient queue.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def create_encounter_endpoint(body: dict, db: Session = Depends(get_db)):
+    """
+    Create a new encounter. The frontend POSTs encounter data here
+    so it appears in the queue with all fields populated.
+    """
+    patient_name = body.get("patient_name", "Unknown")
+    patient_id = body.get("patient_id", "")
+    encounter_type = body.get("type", "Prescription OCR")
+    enc_status = body.get("status", "Waiting")
+    doctor_name = body.get("doctor", "")
+    age = body.get("age")
+    gender = body.get("gender", "")
+
+    # Try to find or enrich from patient registry
+    if patient_id:
+        patient = crud.get_patient(db, patient_id)
+        if patient:
+            if not age:
+                age = patient.age
+            if not gender:
+                gender = patient.gender
+            if not patient_name or patient_name == "Unknown":
+                patient_name = patient.name
+    else:
+        # Search by name
+        results = crud.search_patients(db, patient_name, limit=1)
+        if results:
+            patient = results[0]
+            patient_id = patient.id
+            if not age:
+                age = patient.age
+            if not gender:
+                gender = patient.gender
+
+    # Auto-assign a doctor if none provided
+    doctor_id = None
+    if not doctor_name:
+        doctor_name = random.choice(_AVAILABLE_DOCTORS)
+
+    # Try to resolve doctor_name to a staff_id
+    # Search for staff with matching name
+    from db.models import Staff
+    doctor_staff = db.query(Staff).filter(Staff.full_name == doctor_name, Staff.role == "doctor").first()
+    if doctor_staff:
+        doctor_id = doctor_staff.staff_id
+
+    # Generate encounter ID
+    enc_id = body.get("id", "")
+    if not enc_id:
+        enc_id = crud.get_next_encounter_id(db)
+
+    # Check if encounter already exists (avoid duplicates from frontend sync)
+    existing = crud.get_encounter(db, enc_id)
+    if existing:
+        return {"encounter": {
+            "id": existing.id,
+            "patient_name": patient_name,
+            "patient_id": existing.patient_id,
+            "type": existing.type,
+            "status": existing.status,
+            "time": existing.created_at.strftime("%I:%M %p") if existing.created_at else "—",
+            "age": age,
+            "gender": gender,
+            "doctor": doctor_name,
+        }, "message": "Encounter already exists"}
+
+    encounter = crud.create_encounter(
+        db,
+        id=enc_id,
+        patient_id=patient_id or None,
+        doctor_id=doctor_id,
+        type=encounter_type,
+        status=enc_status,
+    )
+
+    time_str = body.get("time", encounter.created_at.strftime("%I:%M %p") if encounter.created_at else "—")
+
+    return {
+        "encounter": {
+            "id": encounter.id,
+            "patient_name": patient_name,
+            "patient_id": patient_id,
+            "type": encounter.type,
+            "status": encounter.status,
+            "time": time_str,
+            "age": age,
+            "gender": gender,
+            "doctor": doctor_name,
+        },
+        "message": "Encounter created successfully",
+    }
 
 
 @router.get(
@@ -176,19 +238,23 @@ _next_pid = 10009  # auto-increment for new registrations
     description="Search patients by name, ID, or phone number.",
     dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
 )
-async def search_patients(q: str = ""):
-    """Search mock patient registry. Production: DB query with LIKE / full-text."""
-    if not q or len(q) < 2:
-        return {"patients": _PATIENT_REGISTRY[:5]}  # return first 5 if no query
-
-    q_lower = q.lower()
-    results = [
-        p for p in _PATIENT_REGISTRY
-        if q_lower in p["name"].lower()
-        or q_lower in p["id"].lower()
-        or q_lower in p["phone"]
-    ]
-    return {"patients": results}
+async def search_patients_endpoint(q: str = "", db: Session = Depends(get_db)):
+    """Search patient registry from database."""
+    patients = crud.search_patients(db, q)
+    return {
+        "patients": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "age": p.age,
+                "gender": p.gender,
+                "phone": p.phone,
+                "address": p.address,
+                "registered": p.registered_at.strftime("%Y-%m-%d") if p.registered_at else "—",
+            }
+            for p in patients
+        ]
+    }
 
 
 @router.post(
@@ -197,32 +263,62 @@ async def search_patients(q: str = ""):
     description="Register a new patient and return the assigned patient ID.",
     dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
 )
-async def register_patient(body: dict):
-    """Register a new patient. Production: insert into DB."""
-    global _next_pid
-
+async def register_patient_endpoint(body: dict, db: Session = Depends(get_db)):
+    """Register a new patient into the database."""
     name = body.get("name", "").strip()
     age = body.get("age")
     gender = body.get("gender", "").strip()
     phone = body.get("phone", "").strip()
     address = body.get("address", "").strip()
+    force = body.get("force", False)  # Allow override if nurse confirms
 
     if not name:
         return JSONResponse(status_code=400, content={"detail": "Patient name is required"})
 
-    new_patient = {
-        "id": f"PID-{_next_pid}",
-        "name": name,
-        "age": int(age) if age else None,
-        "gender": gender or "U",
-        "phone": phone,
-        "address": address,
-        "registered": "2026-02-25",
-    }
-    _PATIENT_REGISTRY.append(new_patient)
-    _next_pid += 1
+    # ── Duplicate detection (medical safety) ──
+    if not force:
+        existing = crud.find_duplicate_patient(
+            db, name=name, phone=phone,
+            age=int(age) if age else None,
+            gender=gender,
+        )
+        if existing:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": f"A patient with similar details already exists: {existing.name} ({existing.id})",
+                    "existing_patient": {
+                        "id": existing.id,
+                        "name": existing.name,
+                        "age": existing.age,
+                        "gender": existing.gender,
+                        "phone": existing.phone,
+                        "address": existing.address,
+                    },
+                },
+            )
 
-    return {"patient": new_patient, "message": "Patient registered successfully"}
+    patient = crud.create_patient(
+        db,
+        name=name,
+        age=int(age) if age else None,
+        gender=gender or "U",
+        phone=phone,
+        address=address,
+    )
+
+    return {
+        "patient": {
+            "id": patient.id,
+            "name": patient.name,
+            "age": patient.age,
+            "gender": patient.gender,
+            "phone": patient.phone,
+            "address": patient.address,
+            "registered": patient.registered_at.strftime("%Y-%m-%d") if patient.registered_at else "—",
+        },
+        "message": "Patient registered successfully",
+    }
 
 
 @router.post(
@@ -240,22 +336,12 @@ async def upload_prescription_for_ocr(
         patient_id: str = Form(..., description="Patient ID"),
         language_hint: Optional[str] = Form("auto", description="Language hint: 'en', 'ta', 'hi', 'auto'"),
         captured_by: str = Form(..., description="Staff ID of nurse capturing image"),
-        image: UploadFile = File(..., description="Prescription image (JPG/PNG, max 10MB)")
+        image: UploadFile = File(..., description="Prescription image (JPG/PNG, max 10MB)"),
+        db: Session = Depends(get_db),
 ):
     """
     Nurse station endpoint: Upload prescription image → OCR → workflow advancement.
-
-    SECURITY CONTROLS:
-    - Role-based access (nurses/admins only)
-    - File type/size validation
-    - Async processing with timeout protection
-    - PHI-safe responses (raw text NOT logged)
-    - Automatic workflow state advancement
-
-    TAMIL SUPPORT:
-    - Auto-detects Tamil script
-    - Applies Tamil-optimized preprocessing
-    - Flags low-confidence Tamil OCR for doctor review
+    Results are saved to the database.
     """
 
     # 1. Validate file type and size
@@ -265,10 +351,10 @@ async def upload_prescription_for_ocr(
             detail="Only JPG/PNG images supported"
         )
 
-    # 2. Enforce 10MB size limit (prevent DoS)
+    # 2. Enforce 10MB size limit
     try:
         contents = await image.read()
-        if len(contents) > 10 * 1024 * 1024:  # 10MB
+        if len(contents) > 10 * 1024 * 1024:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail="Image exceeds 10MB limit"
@@ -283,7 +369,19 @@ async def upload_prescription_for_ocr(
     # 3. Determine language mode
     language_mode = _map_language_hint(language_hint)
 
-    # 4. Get dependencies
+    # 4. Ensure the encounter exists in DB (it may have been created via localStorage pre-DB)
+    existing_enc = crud.get_encounter(db, encounter_id)
+    if not existing_enc:
+        crud.create_encounter(
+            db,
+            id=encounter_id,
+            patient_id=patient_id or None,
+            type="Prescription OCR",
+            status="OCR Processing",
+        )
+        logger.info(f"Auto-created encounter {encounter_id} in DB (was missing)")
+
+    # 5. Get dependencies
     ocr_processor = get_ocr_processor(language_mode.value)
     workflow = get_or_create_workflow(encounter_id, patient_id)
 
@@ -292,11 +390,10 @@ async def upload_prescription_for_ocr(
     temp_path = Path(temp_dir) / f"ocr_{encounter_id}_{image.filename}"
 
     try:
-        # Write image to disk (Tesseract requires file path)
         with open(temp_path, "wb") as f:
             f.write(contents)
 
-        # 6. Execute OCR with workflow integration
+        # 6. Execute OCR
         try:
             result = await ocr_processor.process_document(
                 image_path=temp_path,
@@ -306,7 +403,24 @@ async def upload_prescription_for_ocr(
                 auto_detect_type=True
             )
 
-            # 7. Build response with extracted data
+            # 7. Save OCR result to database
+            crud.create_ocr_result(
+                db,
+                encounter_id=encounter_id,
+                document_type=result.document_type,
+                language_detected=result.language_detected,
+                confidence_mean=result.confidence.mean,
+                processing_time_ms=result.processing_time_ms,
+                raw_text=result.raw_text,
+                normalized_text=result.normalized_text,
+                structured_fields=[f.model_dump() for f in result.structured_fields],
+                safety_flags=result.safety_flags,
+                requires_doctor_review=(
+                    "LOW_CONFIDENCE_TAMIL_OCR" in result.safety_flags
+                    or "LOW_OCR_CONFIDENCE" in result.safety_flags
+                ),
+            )
+
             response = OCRResultResponse(
                 status=OCRStatus.SUCCESS if not result.safety_flags else OCRStatus.LOW_CONFIDENCE,
                 encounter_id=encounter_id,
@@ -335,7 +449,6 @@ async def upload_prescription_for_ocr(
             return response
 
         except LowConfidenceError as e:
-            # Non-fatal: Return result with safety flags (requires doctor review)
             logger.warning(f"Low confidence OCR | encounter={encounter_id}")
             result = getattr(e, 'result', None)
             if result:
@@ -374,7 +487,6 @@ async def upload_prescription_for_ocr(
             )
 
     finally:
-        # 8. Cleanup temp file (critical for PHI security)
         try:
             import shutil
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -388,7 +500,7 @@ def _map_language_hint(hint: str) -> LanguageMode:
         "en": LanguageMode.ENGLISH,
         "ta": LanguageMode.TAMIL,
         "hi": LanguageMode.HINDI,
-        "auto": LanguageMode.ENGLISH_TAMIL,  # Default bilingual mode
+        "auto": LanguageMode.ENGLISH_TAMIL,
         "eng+tam": LanguageMode.ENGLISH_TAMIL,
         "eng+hin": LanguageMode.ENGLISH_HINDI
     }

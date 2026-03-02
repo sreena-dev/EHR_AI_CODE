@@ -34,6 +34,163 @@ def get_note_generator() -> ClinicalNoteGenerator:
         _note_generator = ClinicalNoteGenerator()
     return _note_generator
 
+@router.get(
+    "/upcoming-patients",
+    summary="Upcoming Patients for Doctor",
+    description="Returns encounters created by nurses that are assigned to or available for the doctor.",
+    dependencies=[Depends(verify_staff_role(["doctor", "admin"]))],
+)
+async def get_upcoming_patients():
+    """
+    Fetch encounters from the database.
+    Returns upcoming (non-completed) patients plus aggregate counts.
+    """
+    from db.database import SessionLocal
+    from db import crud
+
+    db = SessionLocal()
+    try:
+        encounters = crud.list_encounters(db)
+        counts = crud.get_encounter_counts(db)
+
+        # Build upcoming list (everything not completed)
+        upcoming = []
+        for enc in encounters:
+            if enc.status == "Completed":
+                continue
+
+            patient = crud.get_patient(db, enc.patient_id) if enc.patient_id else None
+            doctor = crud.get_staff(db, enc.doctor_id) if enc.doctor_id else None
+
+            upcoming.append({
+                "id": enc.id,
+                "patient_name": patient.name if patient else "Unknown",
+                "patient_id": enc.patient_id or "",
+                "type": enc.type or "—",
+                "status": enc.status or "Waiting",
+                "time": enc.created_at.strftime("%I:%M %p") if enc.created_at else "—",
+                "age": patient.age if patient else "—",
+                "gender": patient.gender if patient else "—",
+                "doctor": doctor.full_name if doctor else "—",
+            })
+
+        return {
+            "upcoming": upcoming,
+            "counts": {
+                "total": counts["total"],
+                "waiting": counts["waiting"],
+                "in_progress": counts["in_progress"],
+                "completed": counts["completed"],
+            },
+        }
+    finally:
+        db.close()
+
+
+@router.get(
+    "/patient-detail",
+    summary="Patient Detail for Doctor",
+    description="Returns full patient info with encounters, OCR results, and vitals.",
+    dependencies=[Depends(verify_staff_role(["doctor", "admin"]))],
+)
+async def get_patient_detail(patient_id: str):
+    """
+    Fetch complete patient context for the doctor:
+    - Patient demographics
+    - All encounters with OCR results and vitals
+    """
+    from db.database import SessionLocal
+    from db import crud
+    from db.models import Encounter
+
+    db = SessionLocal()
+    try:
+        patient = crud.get_patient(db, patient_id)
+        if not patient:
+            return JSONResponse(status_code=404, content={"detail": "Patient not found"})
+
+        # Get all encounters for this patient
+        encounters_data = []
+        encounters = db.query(Encounter).filter(
+            Encounter.patient_id == patient_id
+        ).order_by(Encounter.created_at.desc()).all()
+
+        for enc in encounters:
+            # OCR results for this encounter
+            ocr_results = crud.get_ocr_results_for_encounter(db, enc.id)
+            ocr_list = []
+            for ocr in ocr_results:
+                ocr_list.append({
+                    "id": ocr.id,
+                    "document_type": ocr.document_type,
+                    "language_detected": ocr.language_detected,
+                    "confidence": ocr.confidence_mean,
+                    "raw_text": ocr.raw_text,
+                    "normalized_text": ocr.normalized_text,
+                    "structured_fields": ocr.structured_fields or [],
+                    "safety_flags": ocr.safety_flags or [],
+                    "requires_review": ocr.requires_doctor_review,
+                    "created_at": ocr.created_at.strftime("%Y-%m-%d %I:%M %p") if ocr.created_at else "—",
+                })
+
+            # Vitals for this encounter
+            vitals = crud.get_vitals(db, enc.id)
+            vitals_data = None
+            if vitals:
+                vitals_data = {
+                    "temperature": vitals.temperature,
+                    "pulse": vitals.pulse,
+                    "bp_systolic": vitals.bp_systolic,
+                    "bp_diastolic": vitals.bp_diastolic,
+                    "resp_rate": vitals.resp_rate,
+                    "spo2": vitals.spo2,
+                    "weight": vitals.weight,
+                    "height": vitals.height,
+                    "notes": vitals.notes,
+                    "recorded_at": vitals.recorded_at.strftime("%Y-%m-%d %I:%M %p") if vitals.recorded_at else "—",
+                }
+
+            # Clinical note
+            note = crud.get_clinical_note(db, enc.id)
+            note_data = None
+            if note:
+                note_data = {
+                    "ai_draft": note.ai_draft,
+                    "final_note": note.final_note,
+                    "doctor_verified": note.doctor_verified,
+                    "verified_at": note.verified_at.strftime("%Y-%m-%d %I:%M %p") if note.verified_at else None,
+                }
+
+            encounters_data.append({
+                "id": enc.id,
+                "type": enc.type or "—",
+                "status": enc.status or "—",
+                "chief_complaint": enc.chief_complaint or "",
+                "visit_type": enc.visit_type or "",
+                "language": enc.language or "en",
+                "created_at": enc.created_at.strftime("%Y-%m-%d %I:%M %p") if enc.created_at else "—",
+                "ocr_results": ocr_list,
+                "vitals": vitals_data,
+                "clinical_note": note_data,
+            })
+
+        return {
+            "patient": {
+                "id": patient.id,
+                "name": patient.name,
+                "age": patient.age,
+                "gender": patient.gender,
+                "phone": patient.phone,
+                "address": patient.address,
+                "blood_group": patient.blood_group,
+                "medical_history": patient.medical_history,
+                "allergies": patient.allergies,
+            },
+            "encounters": encounters_data,
+        }
+    finally:
+        db.close()
+
 @router.post(
     "/transcribe",
     dependencies=[Depends(verify_staff_role(["doctor", "nurse"]))]
