@@ -333,3 +333,179 @@ def get_vitals(db: Session, encounter_id: str) -> Optional[Vitals]:
     return db.query(Vitals).filter(
         Vitals.encounter_id == encounter_id
     ).first()
+
+
+# ═══════════════════════════════════════════
+# ADMIN CRUD
+# ═══════════════════════════════════════════
+
+def list_all_staff(db: Session) -> list[Staff]:
+    """List all staff members ordered by role then name."""
+    return db.query(Staff).order_by(Staff.role, Staff.full_name).all()
+
+
+def update_staff_status(db: Session, staff_id: str, new_status: str) -> Optional[Staff]:
+    """Activate or deactivate a staff member."""
+    staff = get_staff(db, staff_id)
+    if staff:
+        staff.status = new_status
+        db.commit()
+        db.refresh(staff)
+    return staff
+
+
+def update_staff_profile(db: Session, staff_id: str, **kwargs) -> Optional[Staff]:
+    """Update staff fields (role, department, full_name, status)."""
+    staff = get_staff(db, staff_id)
+    if not staff:
+        return None
+    for key, value in kwargs.items():
+        if hasattr(staff, key) and key not in ("staff_id", "password_hash"):
+            setattr(staff, key, value)
+    db.commit()
+    db.refresh(staff)
+    return staff
+
+
+def get_admin_dashboard_stats(db: Session) -> dict:
+    """
+    Aggregate stats for the admin dashboard.
+    Returns system-wide encounter counts, staff counts by role, patient count,
+    recent encounters for the inline table, and alerts.
+    """
+    # Use naive datetime for SQLite compatibility (SQLite stores naive datetimes)
+    today_start = datetime.combine(date.today(), datetime.min.time())
+
+    def _make_naive(dt):
+        """Strip tzinfo for safe comparison with SQLite naive datetimes."""
+        if dt and dt.tzinfo is not None:
+            return dt.replace(tzinfo=None)
+        return dt
+
+    # ─── All encounters in the system ───
+    all_encounters = db.query(Encounter).order_by(Encounter.created_at.desc()).all()
+
+    total_encounters = len(all_encounters)
+    completed = sum(1 for e in all_encounters if e.status == "Completed")
+
+    # ─── Staff counts by role ───
+    all_staff = db.query(Staff).filter(Staff.status == "active").all()
+
+    # Nurses
+    all_nurses = [s for s in all_staff if s.role == "nurse"]
+    nurses_on_duty = sum(
+        1 for s in all_nurses
+        if s.last_login and _make_naive(s.last_login) >= today_start
+    )
+
+    # Doctors
+    all_doctors = [s for s in all_staff if s.role == "doctor"]
+    doctors_on_duty = sum(
+        1 for s in all_doctors
+        if s.last_login and _make_naive(s.last_login) >= today_start
+    )
+
+    # All staff on duty (any role logged in today)
+    staff_on_duty = sum(
+        1 for s in all_staff
+        if s.last_login and _make_naive(s.last_login) >= today_start
+    )
+
+    # ─── Patient count ───
+    patient_count = db.query(Patient).count()
+
+    # ─── Recent encounters for inline table (last 20) ───
+    recent_encounters = []
+    for enc in all_encounters[:20]:
+        patient_name = enc.patient_rel.name if enc.patient_rel else "Unknown"
+        recent_encounters.append({
+            "id": enc.id,
+            "patient_name": patient_name,
+            "doctor_id": enc.doctor_id or "—",
+            "type": enc.type,
+            "status": enc.status,
+            "chief_complaint": enc.chief_complaint or "—",
+            "created_at": enc.created_at.isoformat() if enc.created_at else "",
+        })
+
+    # ─── Alerts: encounters stuck in non-terminal states for > 30 min ───
+    now_naive = datetime.utcnow()
+    alerts = []
+    for enc in all_encounters:
+        if enc.status in ("Waiting", "Checked In"):
+            enc_created = _make_naive(enc.created_at) if enc.created_at else None
+            if enc_created:
+                wait_mins = (now_naive - enc_created).total_seconds() / 60
+                if wait_mins > 30:
+                    patient_name = enc.patient_rel.name if enc.patient_rel else "Unknown"
+                    alerts.append({
+                        "type": "long_wait",
+                        "severity": "warning" if wait_mins < 60 else "critical",
+                        "message": f"{patient_name} waiting for {int(wait_mins)} minutes",
+                        "encounter_id": enc.id,
+                        "wait_minutes": int(wait_mins),
+                    })
+
+    # OCR failures needing review
+    ocr_review_count = db.query(OCRResult).filter(
+        OCRResult.requires_doctor_review == True,
+    ).count()
+    if ocr_review_count > 0:
+        alerts.append({
+            "type": "ocr_review",
+            "severity": "warning",
+            "message": f"{ocr_review_count} OCR result(s) require manual review",
+        })
+
+    return {
+        "encounters": {
+            "total": total_encounters,
+            "completed": completed,
+            "recent": recent_encounters,
+        },
+        "staff": {
+            "total": len(all_staff),
+            "active": len(all_staff),
+            "on_duty": staff_on_duty,
+            "total_nurses": len(all_nurses),
+            "nurses_on_duty": nurses_on_duty,
+            "total_doctors": len(all_doctors),
+            "doctors_on_duty": doctors_on_duty,
+        },
+        "patients": {
+            "total": patient_count,
+        },
+        "alerts": alerts,
+    }
+
+
+def list_all_encounters_filtered(
+    db: Session,
+    status_filter: Optional[str] = None,
+    doctor_filter: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    limit: int = 100,
+) -> list[Encounter]:
+    """List encounters with optional filters for admin oversight."""
+    q = db.query(Encounter)
+
+    if status_filter:
+        q = q.filter(Encounter.status == status_filter)
+    if doctor_filter:
+        q = q.filter(Encounter.doctor_id == doctor_filter)
+    if date_from:
+        start = datetime.combine(date_from, datetime.min.time())
+        q = q.filter(Encounter.created_at >= start)
+    if date_to:
+        end = datetime.combine(date_to, datetime.max.time())
+        q = q.filter(Encounter.created_at <= end)
+
+    return q.order_by(Encounter.created_at.desc()).limit(limit).all()
+
+
+def get_recent_audit_entries(db: Session, limit: int = 50) -> list[WorkflowAudit]:
+    """Get the most recent audit trail entries across all encounters."""
+    return db.query(WorkflowAudit).order_by(
+        WorkflowAudit.timestamp.desc()
+    ).limit(limit).all()
