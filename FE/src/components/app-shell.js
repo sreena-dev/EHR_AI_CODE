@@ -23,9 +23,9 @@ const DOCTOR_NAV = [
 
 const ADMIN_NAV = [
   { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-  { icon: 'person_add', label: 'Staff Registration', path: '/admin/register' },
-  { icon: 'groups', label: 'Patient Queue', path: '/admin/queue' },
-  { icon: 'settings', label: 'Settings', path: '/admin/settings' },
+  { icon: 'people', label: 'Staff Management', path: '/admin/staff' },
+  { icon: 'assignment', label: 'Encounters', path: '/admin/encounters' },
+  { icon: 'history', label: 'Audit Trail', path: '/admin/audit' },
 ];
 
 /**
