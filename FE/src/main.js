@@ -40,6 +40,7 @@ import { renderScheduling } from './pages/scheduling.js';
 import { renderDraftsRecovery } from './pages/drafts-recovery.js';
 import { renderSchedulingPreferences } from './pages/scheduling-preferences.js';
 import { renderDiseaseTracking } from './pages/disease-tracking.js';
+import { renderPricing } from './pages/pricing.js';
 
 // Admin pages
 import { renderAdminDashboard } from './pages/admin-dashboard.js';
@@ -100,6 +101,7 @@ route('/doctor/case', requireAuth(renderClinicalCase));
 route('/doctor/emr-success', requireAuth(renderEMRSuccess));
 route('/doctor/scheduling-preferences', requireAuth(renderSchedulingPreferences));
 route('/doctor/tracking', requireAuth(renderDiseaseTracking));
+route('/doctor/billing', requireAuth(renderPricing));
 
 // ═══════════════════════════════════
 // Admin routes
@@ -110,6 +112,7 @@ route('/admin/encounters', requireAuth(renderAdminEncounters));
 route('/admin/audit', requireAuth(renderAdminAudit));
 route('/admin/queue', requireAuth(renderPatientQueue));
 route('/admin/profile', requireAuth(renderProfile));
+route('/admin/billing', requireAuth(renderPricing));
 
 // ═══════════════════════════════════
 // Patient routes
