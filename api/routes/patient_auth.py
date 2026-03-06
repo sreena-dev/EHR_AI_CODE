@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 
 from api.middleware.auth import PasswordManager, JWTManager, RateLimiter
+from api.services import abdm_service
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,34 @@ class PatientRegisterRequest(BaseModel):
     emergency_contact_name: str = Field(..., min_length=2, max_length=200)
     emergency_contact_phone: str = Field(..., min_length=10, max_length=20)
     insurance_id: Optional[str] = Field(None, max_length=100)
+    
+    # ABDM Fields
+    abha_number: Optional[str] = Field(None, description="14-digit ABHA ID")
+    abha_address: Optional[str] = Field(None, max_length=100)
+    district: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=10)
+    father_name: Optional[str] = Field(None, max_length=200)
+    id_proof_type: Optional[str] = Field(None, max_length=50)
+    id_proof_number: Optional[str] = Field(None, max_length=50)
+    consent_health_data: bool = False
+    consent_data_sharing: bool = False
+    
     password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("abha_number")
+    @classmethod
+    def validate_abha(cls, v):
+        if v and not abdm_service.validate_abha_number(v):
+            raise ValueError("Invalid 14-digit ABHA number")
+        return v
+        
+    @field_validator("abha_address")
+    @classmethod
+    def validate_abha_address(cls, v):
+        if v and not abdm_service.validate_abha_address(v):
+            raise ValueError("Invalid ABHA Address format")
+        return v
 
     @field_validator("password")
     @classmethod
@@ -149,6 +177,25 @@ async def patient_register(data: PatientRegisterRequest, request: Request):
             existing.emergency_contact_name = data.emergency_contact_name
             existing.emergency_contact_phone = data.emergency_contact_phone
             existing.insurance_id = data.insurance_id
+            existing.abha_number = data.abha_number
+            existing.abha_address = data.abha_address
+            existing.district = data.district
+            existing.state = data.state
+            existing.pincode = data.pincode
+            existing.father_name = data.father_name
+            existing.id_proof_type = data.id_proof_type
+            existing.id_proof_number = abdm_service.mask_id_number(data.id_proof_number) if data.id_proof_number else None
+            existing.consent_health_data = data.consent_health_data
+            existing.consent_data_sharing = data.consent_data_sharing
+            
+            if data.consent_health_data or data.consent_data_sharing:
+                existing.consent_timestamp = datetime.now(timezone.utc)
+                from db.models import PatientConsent
+                if data.consent_health_data:
+                    db.add(PatientConsent(patient_id=existing.id, consent_type="health_data", granted=True))
+                if data.consent_data_sharing:
+                    db.add(PatientConsent(patient_id=existing.id, consent_type="data_sharing", granted=True))
+                    
             if data.blood_group:
                 existing.blood_group = data.blood_group
             if data.allergies:
@@ -186,9 +233,26 @@ async def patient_register(data: PatientRegisterRequest, request: Request):
             emergency_contact_name=data.emergency_contact_name.strip(),
             emergency_contact_phone=data.emergency_contact_phone.strip(),
             insurance_id=data.insurance_id,
+            abha_number=data.abha_number,
+            abha_address=data.abha_address,
+            district=data.district,
+            state=data.state,
+            pincode=data.pincode,
+            father_name=data.father_name,
+            id_proof_type=data.id_proof_type,
+            id_proof_number=abdm_service.mask_id_number(data.id_proof_number) if data.id_proof_number else None,
+            consent_health_data=data.consent_health_data,
+            consent_data_sharing=data.consent_data_sharing,
+            consent_timestamp=datetime.now(timezone.utc) if (data.consent_health_data or data.consent_data_sharing) else None,
             password_hash=_password_manager.hash_password(data.password),
         )
         db.add(patient)
+        
+        from db.models import PatientConsent
+        if data.consent_health_data:
+            db.add(PatientConsent(patient_id=patient_id, consent_type="health_data", granted=True))
+        if data.consent_data_sharing:
+            db.add(PatientConsent(patient_id=patient_id, consent_type="data_sharing", granted=True))
         db.commit()
         db.refresh(patient)
 
@@ -321,5 +385,52 @@ async def patient_login(credentials: PatientLoginRequest, request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Authentication service error"
         )
+    finally:
+        db.close()
+
+
+@router.get(
+    "/{patient_id}/fhir",
+    summary="Get Patient as FHIR R4",
+    description="Returns the patient record formatted as an ABDM-compliant FHIR R4 Patient resource"
+)
+async def get_patient_fhir(patient_id: str):
+    from db.database import SessionLocal
+    from db.models import Patient
+    
+    db = SessionLocal()
+    try:
+        patient = db.query(Patient).filter(Patient.id == patient_id).first()
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+            
+        return abdm_service.serialize_fhir_patient(patient)
+    finally:
+        db.close()
+
+
+@router.get(
+    "/{patient_id}/consent",
+    summary="Get Patient Consent History",
+    description="Returns the ABDM consent audit trail for the patient"
+)
+async def get_patient_consents(patient_id: str):
+    from db.database import SessionLocal
+    from db.models import PatientConsent
+    
+    db = SessionLocal()
+    try:
+        consents = db.query(PatientConsent).filter(PatientConsent.patient_id == patient_id).order_by(PatientConsent.timestamp.desc()).all()
+        return [
+            {
+                "id": c.id,
+                "consent_type": c.consent_type,
+                "granted": c.granted,
+                "purpose": c.purpose,
+                "timestamp": c.timestamp,
+                "revoked_at": c.revoked_at
+            }
+            for c in consents
+        ]
     finally:
         db.close()

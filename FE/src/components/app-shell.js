@@ -28,6 +28,12 @@ const ADMIN_NAV = [
   { icon: 'history', label: 'Audit Trail', path: '/admin/audit' },
 ];
 
+const PATIENT_NAV = [
+  { icon: 'dashboard', label: 'Dashboard', path: '/patient/dashboard' },
+  { icon: 'description', label: 'Health Records', path: '/patient/records' },
+  { icon: 'person', label: 'My Profile', path: '/patient/profile' },
+];
+
 /**
  * Render the app shell with sidebar and content area
  * @param {string} pageTitle - Title for the header
@@ -44,6 +50,7 @@ export function renderAppShell(pageTitle, bodyHTML, activePath) {
   switch (role) {
     case 'doctor': navItems = DOCTOR_NAV; break;
     case 'admin': navItems = ADMIN_NAV; break;
+    case 'patient': navItems = PATIENT_NAV; break;
     default: navItems = NURSE_NAV;
   }
 

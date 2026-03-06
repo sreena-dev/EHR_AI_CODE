@@ -68,8 +68,12 @@ def _seed_patients(db: Session):
         logger.info("Patient table already populated — skipping seed.")
         return
 
+    from api.middleware.auth import PasswordManager
+    pm = PasswordManager()
+
     default_patients = [
-        {"id": "PID-10001", "name": "Priya Sharma",  "age": 28, "gender": "F", "phone": "9876543210", "address": "12 MG Road, Chennai"},
+        {"id": "PID-10001", "name": "Priya Sharma",  "age": 28, "gender": "F", "phone": "9876543210", "address": "12 MG Road, Chennai",
+         "password_hash": pm.hash_password("Patient@2024!"), "emergency_contact_name": "Raj Sharma", "emergency_contact_phone": "9876543200"},
         {"id": "PID-10002", "name": "Rajesh Kumar",   "age": 45, "gender": "M", "phone": "9876543211", "address": "45 Anna Nagar, Chennai"},
         {"id": "PID-10003", "name": "Meena Devi",     "age": 62, "gender": "F", "phone": "9876543212", "address": "78 T Nagar, Chennai"},
         {"id": "PID-10004", "name": "Arjun Patel",    "age": 35, "gender": "M", "phone": "9876543213", "address": "23 Velachery, Chennai"},
@@ -83,4 +87,5 @@ def _seed_patients(db: Session):
         patient = Patient(**p)
         db.add(patient)
 
-    logger.info(f"Seeded {len(default_patients)} patients.")
+    logger.info(f"Seeded {len(default_patients)} patients (PID-10001 has login credentials).")
+

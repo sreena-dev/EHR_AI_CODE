@@ -5,8 +5,8 @@
 import { navigate } from '../router.js';
 
 export async function renderRoleSelection() {
-    const app = document.getElementById('app');
-    app.innerHTML = `
+  const app = document.getElementById('app');
+  app.innerHTML = `
     <div class="auth-layout">
       <!-- Brand Panel -->
       <div class="auth-brand">
@@ -14,18 +14,18 @@ export async function renderRoleSelection() {
           <div class="auth-brand-logo">
             <span class="material-icons-outlined">group_add</span>
           </div>
-          <h1>Join AIRA Clinical</h1>
-          <p>Register as a new staff member. Your role determines access permissions, 
-             dashboard layout, and available clinical tools within the system.</p>
+          <h1>Join AIRA</h1>
+          <p>Register as a new staff member or patient. Your role determines access permissions, 
+             dashboard layout, and available tools within the system.</p>
         </div>
       </div>
 
       <!-- Role Selection Panel -->
       <div class="auth-form-wrapper" style="background: var(--gray-50);">
         <div style="width: 100%; max-width: 560px;">
-          <h2>Select Staff Role</h2>
+          <h2>Select Your Role</h2>
           <p class="subtitle" style="color: var(--gray-500); margin-bottom: 32px;">
-            Choose the primary role for the new staff member. This will determine their access permissions and dashboard layout.
+            Choose the primary role for registration. This determines your access permissions and dashboard.
           </p>
 
           <div class="role-cards">
@@ -76,6 +76,29 @@ export async function renderRoleSelection() {
               </div>
               <span class="material-icons-outlined role-card-arrow">arrow_forward</span>
             </div>
+
+            <!-- Divider -->
+            <div style="display: flex; align-items: center; gap: 12px; margin: 20px 0;">
+              <div style="flex: 1; height: 1px; background: var(--gray-200);"></div>
+              <span style="font-size: 0.75rem; color: var(--gray-400); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Or register as</span>
+              <div style="flex: 1; height: 1px; background: var(--gray-200);"></div>
+            </div>
+
+            <!-- Patient Role -->
+            <div class="role-card" data-role="patient" tabindex="0" style="border: 2px solid #7c3aed22;">
+              <div class="role-card-icon" style="background: #f3e8ff; color: #7c3aed;">
+                <span class="material-icons-outlined">person</span>
+              </div>
+              <div class="role-card-content">
+                <h3>Patient</h3>
+                <p>Access your health records, appointments, and prescriptions. View lab results and communicate with your care team.</p>
+                <div class="role-tags">
+                  <span class="badge" style="background: #f3e8ff; color: #7c3aed;">Health Records</span>
+                  <span class="badge" style="background: #f3e8ff; color: #7c3aed;">Appointments</span>
+                </div>
+              </div>
+              <span class="material-icons-outlined role-card-arrow">arrow_forward</span>
+            </div>
           </div>
 
           <div style="margin-top: 24px; text-align: center;">
@@ -93,17 +116,21 @@ export async function renderRoleSelection() {
     </div>
   `;
 
-    // Role card click handlers
-    document.querySelectorAll('.role-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const role = card.dataset.role;
-            navigate(`/register?role=${role}`);
-        });
-        card.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                card.click();
-            }
-        });
+  // Role card click handlers
+  document.querySelectorAll('.role-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const role = card.dataset.role;
+      if (role === 'patient') {
+        navigate('/patient-register');
+      } else {
+        navigate(`/register?role=${role}`);
+      }
     });
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.click();
+      }
+    });
+  });
 }

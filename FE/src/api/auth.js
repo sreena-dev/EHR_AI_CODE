@@ -86,9 +86,48 @@ export async function authFetch(url, options = {}) {
     if (res.status === 401) {
         // Token expired — redirect to login
         logout();
-        window.location.hash = '#/login';
+        const user = getCurrentUser();
+        if (user?.role === 'patient') {
+            window.location.hash = '#/patient-login';
+        } else {
+            window.location.hash = '#/login';
+        }
         throw new Error('Session expired. Please login again.');
     }
 
     return res;
 }
+
+/**
+ * Login with patient credentials
+ * @param {string} patientId - Patient ID (e.g. PID-10001)
+ * @param {string} password - Password
+ * @returns {Promise<Object>} Login response with token and patient info
+ */
+export async function patientLogin(patientId, password) {
+    const res = await fetch('/api/auth/patient/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: patientId, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+        throw new Error(data.detail || data.message || 'Login failed');
+    }
+
+    // Store tokens and user data
+    if (data.token) {
+        sessionStorage.setItem(TOKEN_KEY, data.token.access_token);
+        sessionStorage.setItem(REFRESH_KEY, data.token.refresh_token);
+        sessionStorage.setItem(USER_KEY, JSON.stringify({
+            staff_id: data.token.staff_id,
+            role: data.token.role,
+            full_name: data.patient?.name || data.token.staff_id,
+        }));
+    }
+
+    return data;
+}
+

@@ -7,6 +7,7 @@ from .routes.nurse_station import router as nurse_router
 from .middleware.auth import auth_router
 from .routes.doctor_consult import router as doctor_router
 from .routes.admin import router as admin_router
+from .routes.patient_auth import router as patient_auth_router
 from core.workflow import WorkflowError
 import logging
 from datetime import datetime, timezone
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(doctor_router)
     app.include_router(admin_router)
+    app.include_router(patient_auth_router)
 
     # Initialize database (create tables + seed default data)
     from db.database import init_db

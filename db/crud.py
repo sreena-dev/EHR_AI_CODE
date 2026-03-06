@@ -509,3 +509,21 @@ def get_recent_audit_entries(db: Session, limit: int = 50) -> list[WorkflowAudit
     return db.query(WorkflowAudit).order_by(
         WorkflowAudit.timestamp.desc()
     ).limit(limit).all()
+
+
+# ═══════════════════════════════════════════
+# PATIENT CRUD
+# ═══════════════════════════════════════════
+
+def get_next_patient_id(db: Session) -> str:
+    """Generate next patient ID (PID-XXXXX format)."""
+    last = db.query(Patient).order_by(Patient.id.desc()).first()
+    if not last:
+        return "PID-10001"
+    # Extract numeric part from PID-XXXXX
+    try:
+        num = int(last.id.split("-")[1])
+        return f"PID-{num + 1}"
+    except (ValueError, IndexError):
+        return f"PID-{10001 + db.query(Patient).count()}"
+

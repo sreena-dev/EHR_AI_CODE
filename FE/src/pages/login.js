@@ -91,6 +91,12 @@ export async function renderLogin() {
 
           <div class="auth-footer">
             <p style="margin-bottom: 8px;"><a href="#/register-role">New Staff? Register here</a></p>
+            <p style="margin-bottom: 8px;">
+              <a href="#/patient-login" style="color: #7c3aed; font-weight: 500; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 4px;">
+                <span class="material-icons-outlined" style="font-size: 16px;">person</span>
+                Patient Portal Login
+              </a>
+            </p>
             <p>AIRA Clinical Workflow • HIPAA Compliant</p>
             <p style="margin-top:6px;">
               <a href="#">Privacy Policy</a> · <a href="#">Terms of Service</a>

@@ -14,6 +14,9 @@ import { renderForgotPassword } from './pages/forgot-password.js';
 import { renderRoleSelection } from './pages/register-role.js';
 import { renderRegister } from './pages/register.js';
 import { renderActivationSuccess } from './pages/activation-success.js';
+import { renderPatientLogin } from './pages/patient-login.js';
+import { renderPatientRegister } from './pages/patient-register.js';
+import { renderPatientDashboard } from './pages/patient-dashboard.js';
 
 // Clinical workflow pages
 import { renderNurseDashboard } from './pages/nurse-dashboard.js';
@@ -38,6 +41,12 @@ import { renderDraftsRecovery } from './pages/drafts-recovery.js';
 import { renderSchedulingPreferences } from './pages/scheduling-preferences.js';
 import { renderDiseaseTracking } from './pages/disease-tracking.js';
 
+// Admin pages
+import { renderAdminDashboard } from './pages/admin-dashboard.js';
+import { renderAdminStaff } from './pages/admin-staff.js';
+import { renderAdminEncounters } from './pages/admin-encounters.js';
+import { renderAdminAudit } from './pages/admin-audit.js';
+
 // Auth guard — redirect to login if not authenticated
 function requireAuth(renderFn) {
   return async () => {
@@ -57,6 +66,8 @@ route('/forgot-password', renderForgotPassword);
 route('/register-role', renderRoleSelection);
 route('/register', renderRegister);
 route('/activation-success', renderActivationSuccess);
+route('/patient-login', renderPatientLogin);
+route('/patient-register', renderPatientRegister);
 
 // ═══════════════════════════════════
 // Nurse routes
@@ -93,14 +104,29 @@ route('/doctor/tracking', requireAuth(renderDiseaseTracking));
 // ═══════════════════════════════════
 // Admin routes
 // ═══════════════════════════════════
-route('/admin/dashboard', requireAuth(renderNurseDashboard));
+route('/admin/dashboard', requireAuth(renderAdminDashboard));
+route('/admin/staff', requireAuth(renderAdminStaff));
+route('/admin/encounters', requireAuth(renderAdminEncounters));
+route('/admin/audit', requireAuth(renderAdminAudit));
 route('/admin/queue', requireAuth(renderPatientQueue));
+route('/admin/profile', requireAuth(renderProfile));
+
+// ═══════════════════════════════════
+// Patient routes
+// ═══════════════════════════════════
+route('/patient/dashboard', requireAuth(renderPatientDashboard));
+route('/patient/records', requireAuth(renderPatientDashboard));  // Records view TBD
+route('/patient/profile', requireAuth(renderProfile));
 
 // Default route
 route('/', () => {
   if (isAuthenticated()) {
     const user = getCurrentUser();
-    navigate(user?.role === 'doctor' ? '/doctor/dashboard' : '/nurse/dashboard');
+    const role = user?.role;
+    if (role === 'patient') navigate('/patient/dashboard');
+    else if (role === 'doctor') navigate('/doctor/dashboard');
+    else if (role === 'admin') navigate('/admin/dashboard');
+    else navigate('/nurse/dashboard');
   } else {
     navigate('/login');
   }

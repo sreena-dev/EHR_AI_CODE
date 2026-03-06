@@ -4,7 +4,7 @@ All tables map 1-to-1 with the schema in the implementation plan.
 """
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Integer, Float, Boolean, Text, DateTime,
+    Column, String, Integer, Float, Boolean, Text, DateTime, Date,
     ForeignKey, JSON, Index
 )
 from sqlalchemy.orm import relationship
@@ -52,15 +52,55 @@ class Patient(Base):
     age = Column(Integer, nullable=True)
     gender = Column(String(10), nullable=True)  # M, F, U
     phone = Column(String(20), nullable=True)
+    email = Column(String(200), nullable=True)
     address = Column(Text, nullable=True)
+    dob = Column(Date, nullable=True)  # Date of birth (precise age calc)
     blood_group = Column(String(10), nullable=True)
     medical_history = Column(Text, nullable=True)
     allergies = Column(Text, nullable=True)
+    emergency_contact_name = Column(String(200), nullable=True)
+    emergency_contact_phone = Column(String(20), nullable=True)
+    insurance_id = Column(String(100), nullable=True)
+    password_hash = Column(String(255), nullable=True)  # null for staff-created patients
+    
+    # ABDM Specific Fields
+    abha_number = Column(String(14), unique=True, index=True, nullable=True)
+    abha_address = Column(String(100), unique=True, index=True, nullable=True)
+    district = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    pincode = Column(String(10), nullable=True)
+    father_name = Column(String(200), nullable=True)
+    id_proof_type = Column(String(50), nullable=True)  # aadhaar, driving_license, etc.
+    id_proof_number = Column(String(50), nullable=True)
+    consent_health_data = Column(Boolean, default=False)
+    consent_data_sharing = Column(Boolean, default=False)
+    consent_timestamp = Column(DateTime(timezone=True), nullable=True)
+    abdm_linked = Column(Boolean, default=False)
+    
     registered_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     encounters = relationship("Encounter", back_populates="patient_rel", order_by="Encounter.created_at.desc()")
+    consents = relationship("PatientConsent", back_populates="patient_rel", cascade="all, delete-orphan")
+
+# ═══════════════════════════════════════════
+# PATIENT CONSENT (ABDM Audit Trail)
+# ═══════════════════════════════════════════
+class PatientConsent(Base):
+    __tablename__ = "patient_consent"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    patient_id = Column(String(50), ForeignKey("patient.id"))
+    consent_type = Column(String(50))  # health_data, data_sharing, hiu_request
+    granted = Column(Boolean, default=False)
+    purpose = Column(String(200))
+    timestamp = Column(DateTime(timezone=True), default=_utcnow)
+    ip_address = Column(String(50), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    patient_rel = relationship("Patient", back_populates="consents")
 
     def __repr__(self):
         return f"<Patient {self.id}: {self.name}>"
