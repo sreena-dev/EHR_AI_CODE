@@ -63,3 +63,4 @@ report.xml
 .model_cache/
 *.txt
 data/
+db/
