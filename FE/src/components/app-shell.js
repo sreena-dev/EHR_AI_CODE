@@ -19,6 +19,7 @@ const DOCTOR_NAV = [
   { icon: 'mic', label: 'Consultation', path: '/doctor/consultation' },
   { icon: 'video_call', label: 'Live Consultation', path: '/doctor/live-consultation' },
   { icon: 'insights', label: 'Disease Tracking', path: '/doctor/tracking' },
+  { icon: 'credit_card', label: 'Billing & Plans', path: '/doctor/billing' },
 ];
 
 const ADMIN_NAV = [
@@ -26,6 +27,7 @@ const ADMIN_NAV = [
   { icon: 'people', label: 'Staff Management', path: '/admin/staff' },
   { icon: 'assignment', label: 'Encounters', path: '/admin/encounters' },
   { icon: 'history', label: 'Audit Trail', path: '/admin/audit' },
+  { icon: 'credit_card', label: 'Billing & Plans', path: '/admin/billing' },
 ];
 
 const PATIENT_NAV = [
