@@ -4,18 +4,42 @@ import { showToast } from '../components/toast.js';
 import { renderAppShell } from '../components/app-shell.js';
 
 window.handleCheckout = async function (planId) {
+  const user = getCurrentUser();
   try {
+    // Step 1: Create mock checkout session
     const result = await authFetch('/api/billing/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         plan_id: planId,
-        success_url: window.location.origin + window.location.pathname,
-        cancel_url: window.location.origin + window.location.pathname
+        success_url: window.location.origin,
+        cancel_url: window.location.origin
       })
     });
 
-    window.location.href = result.url;
+    // Step 2: In a real app, window.location.href = result.url;
+    // Since we are mocking the webhook locally, simulate payment success directly:
+    showToast('Redirecting to payment gateway...', 'info');
+    setTimeout(async () => {
+      showToast('Processing mock payment...', 'info');
+      try {
+        await authFetch('/api/billing/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            staff_id: user.staff_id,
+            plan_id: planId,
+            session_id: result.id
+          })
+        });
+        showToast('Subscription upgraded successfully!', 'success');
+        // Reload pricing UI
+        renderPricing();
+      } catch (err) {
+        showToast(err.message || 'Payment processing failed.', 'error');
+      }
+    }, 1500);
+
   } catch (err) {
     showToast(err.message || 'Failed to start checkout', 'error');
   }
@@ -23,31 +47,6 @@ window.handleCheckout = async function (planId) {
 
 export async function renderPricing() {
   const user = getCurrentUser();
-
-  // If redirected back from mock checkout, finalize payment
-  const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get('session_id');
-  const sessionPlanId = urlParams.get('plan_id');
-
-  if (sessionId && sessionPlanId) {
-    try {
-      showToast('Processing payment...', 'info');
-      await authFetch('/api/billing/webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          staff_id: user.staff_id,
-          plan_id: sessionPlanId,
-          session_id: sessionId
-        })
-      });
-      showToast('Subscription upgraded successfully!', 'success');
-      // Clear URL params
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (err) {
-      showToast(err.message || 'Payment processing failed.', 'error');
-    }
-  }
 
   // Fetch current status
   let subStatus = null;
