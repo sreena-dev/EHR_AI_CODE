@@ -117,7 +117,13 @@ class BillingService:
         plan = db_session.query(SubscriptionPlan).filter(SubscriptionPlan.id == sub.plan_id).first()
         
         # Check if expired
-        is_expired = sub.current_period_end < datetime.now(timezone.utc)
+        current_time = datetime.now(timezone.utc)
+        sub_end = sub.current_period_end
+        if sub_end and sub_end.tzinfo is None:
+            sub_end = sub_end.replace(tzinfo=timezone.utc)
+            
+        is_expired = sub_end < current_time if sub_end else False
+        
         effective_status = sub.status
         if is_expired and effective_status == "active":
             effective_status = "past_due"
@@ -129,7 +135,7 @@ class BillingService:
             "plan_id": sub.plan_id,
             "plan_name": plan.name if plan else "Unknown",
             "status": effective_status,
-            "current_period_end": sub.current_period_end.isoformat(),
+            "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
             "cancel_at_period_end": sub.cancel_at_period_end,
             "features": plan.features if plan else {}
         }
