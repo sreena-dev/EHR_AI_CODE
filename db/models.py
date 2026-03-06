@@ -243,3 +243,63 @@ class Vitals(Base):
 
     def __repr__(self):
         return f"<Vitals enc={self.encounter_id}>"
+
+# ═══════════════════════════════════════════
+# SAAS BILLING & SUBSCRIPTIONS
+# ═══════════════════════════════════════════
+class SubscriptionPlan(Base):
+    """Reference table for SaaS Subscription Tiers (e.g., Pro, Elite)"""
+    __tablename__ = "subscription_plan"
+
+    id = Column(String(50), primary_key=True)  # e.g., plan_pro, plan_elite
+    name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=True)
+    price_inr = Column(Integer, nullable=False) # e.g. 12000 for Pro, 18000 for Elite
+    interval = Column(String(20), default="year")
+    features = Column(JSON, default=dict)       # {"teleconsult": true, "analytics": false}
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+    def __repr__(self):
+        return f"<SubscriptionPlan {self.name} - ₹{self.price_inr}/{self.interval}>"
+
+class ClinicSubscription(Base):
+    """Tracks the active subscription for a clinic (or head doctor)"""
+    __tablename__ = "clinic_subscription"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Tying the subscription to a specific owner/staff member
+    staff_id = Column(String(100), ForeignKey("staff.staff_id"), unique=True, nullable=False)
+    plan_id = Column(String(50), ForeignKey("subscription_plan.id"), nullable=False)
+    status = Column(String(50), default="active")  # active, past_due, canceled, trial
+    current_period_end = Column(DateTime(timezone=True), nullable=False)
+    cancel_at_period_end = Column(Boolean, default=False)
+    stripe_subscription_id = Column(String(100), nullable=True) # Mock external ID
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    # Relationships
+    staff_rel = relationship("Staff", foreign_keys=[staff_id])
+    plan_rel = relationship("SubscriptionPlan")
+    invoices = relationship("BillingInvoice", back_populates="subscription_rel", order_by="BillingInvoice.created_at.desc()")
+
+    def __repr__(self):
+        return f"<ClinicSubscription {self.staff_id} on {self.plan_id} ({self.status})>"
+
+class BillingInvoice(Base):
+    """Audit trail of payments and invoices generated for the subscription"""
+    __tablename__ = "billing_invoice"
+
+    id = Column(String(100), primary_key=True)  # Mock invoice ID e.g., inv_12345
+    subscription_id = Column(Integer, ForeignKey("clinic_subscription.id"), nullable=False)
+    amount_paid = Column(Integer, nullable=False)
+    currency = Column(String(10), default="inr")
+    status = Column(String(50), default="paid") # paid, open, void, uncollectible
+    invoice_pdf_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+
+    # Relationships
+    subscription_rel = relationship("ClinicSubscription", back_populates="invoices")
+
+    def __repr__(self):
+        return f"<BillingInvoice {self.id} - {self.amount_paid} {self.currency}>"
