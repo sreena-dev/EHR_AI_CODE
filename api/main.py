@@ -72,12 +72,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    from .routes.patient_auth import router as patient_auth_router
+    from .routes.billing import router as billing_router
+
     # Register routers
     app.include_router(nurse_router)
     app.include_router(auth_router)
     app.include_router(doctor_router)
     app.include_router(admin_router)
     app.include_router(patient_auth_router)
+    app.include_router(billing_router)
 
     # Initialize database (create tables + seed default data)
     from db.database import init_db
