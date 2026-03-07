@@ -5,7 +5,7 @@
  */
 import { renderAppShell } from '../components/app-shell.js';
 import { getCurrentUser } from '../api/auth.js';
-import { searchPatients, registerPatient, createEncounter } from '../api/nurse.js';
+import { searchPatients, registerPatient, createEncounter, saveVitals } from '../api/nurse.js';
 import { showToast } from '../components/toast.js';
 
 /* ── Persistent state ── */
@@ -857,15 +857,34 @@ export async function renderVitalsEntry() {
       saveAnother.disabled = true;
 
       setTimeout(async () => {
-        // Persist vitals to localStorage (until vitals API is built)
-        const vKey = `vitals_${selectedPatient.id}`;
-        let existing = [];
-        try { existing = JSON.parse(localStorage.getItem(vKey) || '[]'); } catch { existing = []; }
-        existing.push(entry);
-        localStorage.setItem(vKey, JSON.stringify(existing));
+        // ── Build structured vitals payload for the backend ──
+        const vitalsPayload = {
+          encounter_id: entry.encounterId,
+          patient_id: entry.patientId,
+          notes: document.getElementById('vital-notes')?.value?.trim() || undefined,
+        };
 
-        // Save encounter to backend DB
+        if (entry.type === 'BP') {
+          const [sys, dia] = (entry.value || '').split('/');
+          vitalsPayload.bp_systolic = sys ? parseInt(sys) : undefined;
+          vitalsPayload.bp_diastolic = dia ? parseInt(dia) : undefined;
+        } else if (entry.type === 'Temp') {
+          vitalsPayload.temperature = parseFloat(entry.value) || undefined;
+        } else if (entry.type === 'HR') {
+          vitalsPayload.pulse = parseInt(entry.value) || undefined;
+        } else if (entry.type === 'SpO2') {
+          vitalsPayload.spo2 = parseFloat(entry.value) || undefined;
+        } else if (entry.type === 'Resp') {
+          vitalsPayload.resp_rate = parseInt(entry.value) || undefined;
+        } else if (entry.type === 'Weight') {
+          vitalsPayload.weight = parseFloat(entry.value) || undefined;
+        } else if (entry.type === 'Height') {
+          vitalsPayload.height = parseFloat(entry.value) || undefined;
+        }
+
+        // ── Persist to backend DB (primary) ──
         try {
+          // First ensure the encounter row exists
           await createEncounter({
             id: entry.encounterId,
             patient_name: selectedPatient.name,
@@ -875,7 +894,18 @@ export async function renderVitalsEntry() {
             age: selectedPatient.age || null,
             gender: selectedPatient.gender || '',
           });
-        } catch (e) { console.warn('Vitals encounter sync failed:', e); }
+          // Then save the vital measurements
+          await saveVitals(vitalsPayload);
+        } catch (e) {
+          console.warn('Vitals DB save failed (will fall back to localStorage):', e);
+        }
+
+        // ── localStorage fallback (used for in-session display) ──
+        const vKey = `vitals_${selectedPatient.id}`;
+        let existing = [];
+        try { existing = JSON.parse(localStorage.getItem(vKey) || '[]'); } catch { existing = []; }
+        existing.push(entry);
+        localStorage.setItem(vKey, JSON.stringify(existing));
 
         showToast(`${entry.label} (${entry.value} ${entry.unit}) saved for ${selectedPatient.name}`, 'success');
 

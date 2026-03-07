@@ -1,184 +1,279 @@
+/**
+ * Billing & Plans Page
+ * Displays subscription tiers and handles checkout flow.
+ * Supports both mock mode (default) and real Razorpay payments.
+ *
+ * MEDICAL SAFETY: No payment card data is handled by this app.
+ * All card processing is done by Razorpay (PCI-DSS Level 1 compliant).
+ */
 import { navigate } from '../router.js';
 import { getCurrentUser, authFetch } from '../api/auth.js';
 import { showToast } from '../components/toast.js';
-import { renderAppShell } from '../components/app-shell.js';
+import { renderAppShell, clearSubscriptionCache } from '../components/app-shell.js';
 
+/* ── Helper: authFetch returns raw Response; we need parsed JSON ── */
+async function billingFetch(url, options = {}) {
+  const res = await authFetch(url, options);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+/* ── Load Razorpay SDK (lazy, only when needed) ── */
+function loadRazorpayScript() {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+    document.head.appendChild(script);
+  });
+}
+
+/* ── Razorpay Checkout Flow ── */
+async function handleRazorpayCheckout(orderData, planId, user) {
+  await loadRazorpayScript();
+
+  return new Promise((resolve, reject) => {
+    const options = {
+      key: orderData.key_id,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      name: 'AIRA Healthcare',
+      description: `${orderData.plan_name} Subscription`,
+      order_id: orderData.id,
+      prefill: {
+        name: user.full_name || user.staff_id,
+        email: '', // Could be fetched from profile
+      },
+      theme: {
+        color: '#4338ca',
+      },
+      handler: async function (response) {
+        // Payment successful → verify on backend
+        try {
+          showToast('Verifying payment…', 'info');
+          await billingFetch('/api/billing/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              plan_id: planId,
+            }),
+          });
+          showToast('Subscription activated successfully!', 'success');
+          clearSubscriptionCache();
+          renderPricing();
+          resolve();
+        } catch (err) {
+          showToast(err.message || 'Verification failed', 'error');
+          reject(err);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          showToast('Payment cancelled.', 'info');
+          reject(new Error('Payment cancelled'));
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  });
+}
+
+/* ── Mock Checkout Flow (dev mode) ── */
+async function handleMockCheckout(orderData, planId, user) {
+  showToast('Redirecting to payment gateway…', 'info');
+
+  // Simulate payment processing delay
+  await new Promise(r => setTimeout(r, 1200));
+  showToast('Processing payment…', 'info');
+
+  await billingFetch('/api/billing/webhook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      staff_id: user.staff_id,
+      plan_id: planId,
+      session_id: orderData.id,
+    }),
+  });
+
+  showToast('Subscription activated successfully!', 'success');
+  clearSubscriptionCache();
+  renderPricing();
+}
+
+/* ── Global handler ── */
 window.handleCheckout = async function (planId) {
   const user = getCurrentUser();
+  if (!user) { showToast('Please log in first.', 'error'); return; }
+
   try {
-    // Step 1: Create mock checkout session
-    const result = await authFetch('/api/billing/checkout', {
+    const orderData = await billingFetch('/api/billing/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         plan_id: planId,
         success_url: window.location.origin,
-        cancel_url: window.location.origin
-      })
+        cancel_url: window.location.origin,
+      }),
     });
 
-    // Step 2: In a real app, window.location.href = result.url;
-    // Since we are mocking the webhook locally, simulate payment success directly:
-    showToast('Redirecting to payment gateway...', 'info');
-    setTimeout(async () => {
-      showToast('Processing mock payment...', 'info');
-      try {
-        await authFetch('/api/billing/webhook', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            staff_id: user.staff_id,
-            plan_id: planId,
-            session_id: result.id
-          })
-        });
-        showToast('Subscription upgraded successfully!', 'success');
-        // Reload pricing UI
-        renderPricing();
-      } catch (err) {
-        showToast(err.message || 'Payment processing failed.', 'error');
-      }
-    }, 1500);
-
+    if (orderData.mode === 'razorpay') {
+      await handleRazorpayCheckout(orderData, planId, user);
+    } else {
+      await handleMockCheckout(orderData, planId, user);
+    }
   } catch (err) {
-    showToast(err.message || 'Failed to start checkout', 'error');
+    if (err.message !== 'Payment cancelled') {
+      showToast(err.message || 'Failed to start checkout', 'error');
+    }
   }
 };
 
+/* ── Main render function ── */
 export async function renderPricing() {
   const user = getCurrentUser();
 
-  // Fetch current status
-  let subStatus = null;
+  // Fetch current subscription status
+  let sub = null;
   try {
-    subStatus = await authFetch('/api/billing/status');
+    sub = await billingFetch('/api/billing/status');
   } catch (err) {
-    console.error('Failed to fetch subscription status:', err);
+    console.warn('Billing status fetch failed:', err.message);
   }
 
-  const isProActive = subStatus?.plan_id === 'plan_pro' && subStatus?.status === 'active';
-  const isEliteActive = subStatus?.plan_id === 'plan_elite' && subStatus?.status === 'active';
+  const isProActive = sub?.plan_id === 'plan_pro' && sub?.status === 'active';
+  const isEliteActive = sub?.plan_id === 'plan_elite' && sub?.status === 'active';
 
-  const proBtnHtml = isProActive
-    ? `<button class="w-full py-3 px-6 rounded-xl font-bold transition-all mt-auto bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700" disabled>Current Plan</button>`
-    : `<button onclick="window.handleCheckout('plan_pro')" class="w-full py-3 px-6 rounded-xl font-bold transition-all mt-auto bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-300">Subscribe to Pro</button>`;
-
-  const eliteBtnText = isEliteActive ? 'Current Plan' : (isProActive ? 'Upgrade to Elite' : 'Subscribe to Elite');
-  const eliteBtnHtml = isEliteActive
-    ? `<button class="w-full py-3 px-6 rounded-xl font-bold transition-all shadow-xl mt-auto bg-indigo-800 text-indigo-400 cursor-not-allowed border border-indigo-700" disabled>Current Plan</button>`
-    : `<button onclick="window.handleCheckout('plan_elite')" class="w-full py-3 px-6 rounded-xl font-bold transition-all shadow-xl mt-auto bg-white text-indigo-900 hover:bg-indigo-50 hover:scale-[1.02]">${eliteBtnText}</button>`;
-
-  const activeSubHtml = subStatus?.has_subscription ? `
-        <div class="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6 mb-12">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-bold text-indigo-900 dark:text-indigo-100">Current Plan: ${subStatus.plan_name}</h3>
-                    <p class="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
-                        Status: <span class="uppercase font-semibold tracking-wider">${subStatus.status}</span>
-                    </p>
-                    <p class="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
-                        Renews/Expires on: ${new Date(subStatus.current_period_end).toLocaleDateString()}
-                    </p>
-                </div>
-                ${subStatus.status === 'past_due' ? `<button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">Update Payment Method</button>` : ''}
-            </div>
+  /* ── Subscription banner ── */
+  let bannerHTML = '';
+  if (sub?.has_subscription) {
+    const renewDate = sub.current_period_end
+      ? new Date(sub.current_period_end).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+      : '—';
+    bannerHTML = `
+      <div style="background:var(--primary-50,#eef2ff); border:1px solid var(--primary-200,#c7d2fe); border-radius:12px; padding:20px 24px; margin-bottom:32px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 style="margin:0 0 4px; font-size:1.1rem; font-weight:700; color:var(--primary-900,#312e81);">Current Plan: ${sub.plan_name}</h3>
+            <p style="margin:0; font-size:0.85rem; color:var(--primary-700,#4338ca);">
+              Status: <strong style="text-transform:uppercase; letter-spacing:0.05em;">${sub.status}</strong>
+              &nbsp;·&nbsp; Renews: ${renewDate}
+            </p>
+          </div>
+          ${sub.status === 'past_due' ? `<button class="btn btn-sm" style="background:var(--error); color:#fff;">Update Payment</button>` : ''}
         </div>
-    ` : `
-        <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl p-6 mb-12 text-center">
-            <h3 class="text-lg font-bold text-amber-900 dark:text-amber-100">No Active Subscription</h3>
-            <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">Please select a plan below to activate your clinic workspace.</p>
-        </div>
-    `;
+      </div>`;
+  } else {
+    bannerHTML = `
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:20px 24px; margin-bottom:32px; text-align:center;">
+        <h3 style="margin:0 0 4px; font-size:1.1rem; font-weight:700; color:#92400e;">No Active Subscription</h3>
+        <p style="margin:0; font-size:0.85rem; color:#b45309;">Choose a plan below to unlock your clinic workspace.</p>
+      </div>`;
+  }
+
+  /* ── Pro button ── */
+  const proBtnHTML = isProActive
+    ? `<button class="btn" disabled style="width:100%;padding:12px;border-radius:10px;font-weight:700;background:var(--gray-100);color:var(--gray-400);cursor:not-allowed;">Current Plan</button>`
+    : `<button onclick="window.handleCheckout('plan_pro')" class="btn btn-secondary" style="width:100%;padding:12px;border-radius:10px;font-weight:700;">Subscribe to Pro</button>`;
+
+  /* ── Elite button ── */
+  const eliteBtnLabel = isEliteActive ? 'Current Plan' : (isProActive ? 'Upgrade to Elite' : 'Subscribe to Elite');
+  const eliteBtnHTML = isEliteActive
+    ? `<button class="btn" disabled style="width:100%;padding:12px;border-radius:10px;font-weight:700;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);cursor:not-allowed;border:1px solid rgba(255,255,255,0.2);">Current Plan</button>`
+    : `<button onclick="window.handleCheckout('plan_elite')" class="btn" style="width:100%;padding:12px;border-radius:10px;font-weight:700;background:#fff;color:#312e81;">${eliteBtnLabel}</button>`;
+
+  /* ── Feature check SVG ── */
+  const checkSVG = `<svg style="width:18px;height:18px;color:#22c55e;flex-shrink:0;margin-right:10px;margin-top:2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+  const crossSVG = `<svg style="width:18px;height:18px;color:var(--gray-300);flex-shrink:0;margin-right:10px;margin-top:2px;opacity:0.5;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+  const eliteCheckSVG = `<svg style="width:18px;height:18px;color:#c084fc;flex-shrink:0;margin-right:10px;margin-top:2px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
 
   const contentHTML = `
-        <div class="max-w-6xl mx-auto p-6 animate-fade-in">
-            <div class="text-center mb-12">
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Clinic Billing & Plans</h1>
-                <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                    Scale your clinic with our advanced EMR and clinical intelligence tools. 
-                    Transparent pricing designed for healthcare professionals.
-                </p>
-            </div>
+    <div style="max-width:960px; margin:0 auto; padding:24px;">
+      <!-- Header -->
+      <div style="text-align:center; margin-bottom:32px;">
+        <h1 style="font-size:1.75rem; font-weight:800; margin:0 0 8px;">Clinic Billing &amp; Plans</h1>
+        <p class="text-muted" style="max-width:540px; margin:0 auto; font-size:0.95rem;">
+          Scale your clinic with advanced EMR &amp; clinical intelligence tools. Transparent pricing for healthcare professionals.
+        </p>
+      </div>
 
-            ${activeSubHtml}
+      ${bannerHTML}
 
-            <!-- Pricing Plans -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                
-                <!-- PRO PLAN -->
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border ${isProActive ? 'border-indigo-500 ring-2 ring-indigo-500 ring-opacity-50' : 'border-gray-200 dark:border-gray-700'} p-8 relative flex flex-col">
-                    ${isProActive ? `<div class="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl uppercase tracking-widest">Active</div>` : ''}
-                    <div class="mb-8">
-                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pro</h2>
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">Essential tools for independent practitioners</p>
-                    </div>
-                    <div class="mb-8">
-                        <span class="text-4xl font-extrabold text-gray-900 dark:text-white">₹12,000</span>
-                        <span class="text-gray-500 dark:text-gray-400">/year</span>
-                    </div>
-                    <ul class="space-y-4 mb-8 flex-1">
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-gray-700 dark:text-gray-300">Core EMR & Digital Prescriptions</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-gray-700 dark:text-gray-300">Tele-Consultation Built-in</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-gray-700 dark:text-gray-300">Basic ABDM Compliance</span>
-                        </li>
-                    </ul>
-                    ${proBtnHtml}
-                </div>
+      <!-- Plans Grid -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:800px; margin:0 auto;">
 
-                <!-- ELITE PLAN -->
-                <div class="bg-gradient-to-b from-indigo-900 to-indigo-800 rounded-2xl shadow-2xl border border-indigo-700 p-8 relative flex flex-col transform scale-105 z-10">
-                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg">Recommended</div>
-                    ${isEliteActive ? `<div class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl uppercase tracking-widest">Active</div>` : ''}
-                    
-                    <div class="mb-8">
-                        <h2 class="text-2xl font-bold text-white mb-2">Elite</h2>
-                        <p class="text-indigo-200 text-sm">Everything you need to grow your practice</p>
-                    </div>
-                    <div class="mb-8">
-                        <span class="text-4xl font-extrabold text-white">₹18,000</span>
-                        <span class="text-indigo-200">/year</span>
-                    </div>
-                    <ul class="space-y-4 mb-8 flex-1">
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-pink-400 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-indigo-50 font-medium">Everything in Pro</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-indigo-300 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-indigo-100">Advanced Analytics (Robin Engine)</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-indigo-300 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-indigo-100">Multi-Clinic & Franchise Support</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-indigo-300 mt-0.5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-indigo-100">Priority 24/7 Support</span>
-                        </li>
-                    </ul>
-                    ${eliteBtnHtml}
-                </div>
-
-            </div>
-
-            <div class="mt-16 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-8 text-center max-w-4xl mx-auto border border-gray-200 dark:border-gray-700">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Hospital or Corporate Chain?</h3>
-                <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-lg mx-auto">We offer custom on-premise deployments, private API access, and tailored features for large healthcare organizations.</p>
-                <button class="px-6 py-2 border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
-                    Contact Sales
-                </button>
-            </div>
-
+        <!-- PRO PLAN -->
+        <div class="card" style="position:relative; display:flex; flex-direction:column; padding:28px; border-radius:16px; ${isProActive ? 'border:2px solid var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,0.15);' : ''}">
+          ${isProActive ? `<div style="position:absolute;top:0;right:0;background:var(--primary);color:#fff;font-size:0.65rem;font-weight:700;padding:4px 10px;border-radius:0 14px 0 10px;text-transform:uppercase;letter-spacing:0.08em;">Active</div>` : ''}
+          <div style="margin-bottom:20px;">
+            <h2 style="font-size:1.35rem;font-weight:800;margin:0 0 4px;">Pro</h2>
+            <p class="text-muted" style="font-size:0.8rem;margin:0;">Essential tools for independent practitioners</p>
+          </div>
+          <div style="margin-bottom:24px;">
+            <span style="font-size:2.4rem;font-weight:900;">₹12,000</span>
+            <span class="text-muted">/year</span>
+          </div>
+          <ul style="list-style:none;padding:0;margin:0 0 24px;flex:1;">
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${checkSVG}<span>Core EMR &amp; Digital Prescriptions</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${checkSVG}<span>Tele-Consultation Built-in</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${checkSVG}<span>Basic ABDM Compliance</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;opacity:0.45;">${crossSVG}<span>Advanced Analytics (Robin)</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;opacity:0.45;">${crossSVG}<span>Multi-Clinic &amp; Patient Portal</span></li>
+          </ul>
+          ${proBtnHTML}
         </div>
-    `;
+
+        <!-- ELITE PLAN -->
+        <div style="position:relative; display:flex; flex-direction:column; padding:28px; border-radius:16px; background:linear-gradient(135deg,#312e81,#4338ca); color:#fff; box-shadow:0 8px 32px rgba(67,56,202,0.35); transform:scale(1.03); z-index:1;">
+          <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#ec4899,#8b5cf6);color:#fff;font-size:0.65rem;font-weight:800;padding:5px 14px;border-radius:20px;text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;">Recommended</div>
+          ${isEliteActive ? `<div style="position:absolute;top:0;right:0;background:#22c55e;color:#fff;font-size:0.65rem;font-weight:700;padding:4px 10px;border-radius:0 14px 0 10px;text-transform:uppercase;letter-spacing:0.08em;">Active</div>` : ''}
+          <div style="margin-bottom:20px;">
+            <h2 style="font-size:1.35rem;font-weight:800;margin:0 0 4px;">Elite</h2>
+            <p style="font-size:0.8rem;margin:0;color:rgba(255,255,255,0.65);">Everything you need to grow your practice</p>
+          </div>
+          <div style="margin-bottom:24px;">
+            <span style="font-size:2.4rem;font-weight:900;">₹18,000</span>
+            <span style="color:rgba(255,255,255,0.6);">/year</span>
+          </div>
+          <ul style="list-style:none;padding:0;margin:0 0 24px;flex:1;">
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${eliteCheckSVG}<span style="font-weight:600;">Everything in Pro</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${eliteCheckSVG}<span>Advanced Analytics (Robin Engine)</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${eliteCheckSVG}<span>Multi-Clinic &amp; Franchise Support</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${eliteCheckSVG}<span>White-label Patient Portal</span></li>
+            <li style="display:flex;align-items:flex-start;margin-bottom:12px;">${eliteCheckSVG}<span>Priority 24/7 Support</span></li>
+          </ul>
+          ${eliteBtnHTML}
+        </div>
+
+      </div>
+
+      <!-- Enterprise CTA -->
+      <div class="card" style="margin-top:40px;max-width:800px;margin-left:auto;margin-right:auto;text-align:center;padding:28px;border-radius:14px;">
+        <h3 style="font-size:1.15rem;font-weight:700;margin:0 0 6px;">Hospital or Corporate Chain?</h3>
+        <p class="text-muted" style="margin:0 0 16px;max-width:480px;display:inline-block;">We offer custom on-premise deployments, private API access, and tailored features for large healthcare organizations.</p>
+        <br>
+        <button class="btn btn-secondary" style="padding:8px 24px;border-radius:8px;font-weight:700;">Contact Sales</button>
+      </div>
+
+      <!-- Payment Mode Badge -->
+      <div style="text-align:center;margin-top:16px;">
+        <span style="font-size:0.7rem;color:var(--gray-400);display:inline-flex;align-items:center;gap:4px;">
+          <span class="material-icons-outlined" style="font-size:14px;">security</span>
+          Payments secured by Razorpay · PCI-DSS Level 1
+        </span>
+      </div>
+    </div>
+  `;
 
   const userRole = user?.role || 'doctor';
   renderAppShell('Billing & Plans', contentHTML, `/${userRole}/billing`);
