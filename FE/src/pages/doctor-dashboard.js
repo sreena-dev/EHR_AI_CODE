@@ -94,7 +94,7 @@ export async function renderDoctorDashboard() {
         </h3>
         <span id="patient-count-badge" class="badge badge-neutral" style="font-size:0.75rem;">0 patients</span>
       </div>
-      <div class="table-wrapper">
+      <div class="table-wrapper table-scroll">
         <table class="data-table">
           <thead>
             <tr>
