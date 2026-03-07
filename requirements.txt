@@ -32,7 +32,7 @@ pdfplumber==0.11.4
 
 # ── Speech (Faster-Whisper — uses ctranslate2, NOT PyTorch) ─────
 faster-whisper==1.1.1
-ctranslate2==4.4.0
+# ctranslate2 is a dependency of faster-whisper and will be installed automatically
 
 # ── NLP (lightweight — HuggingFace Transformers without torch) ──
 huggingface_hub==1.2.0
