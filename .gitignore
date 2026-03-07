@@ -63,5 +63,11 @@ dist-ssr
 *.sw?
 report.xml
 .model_cache/
-*.txt
+# Allow deployment-critical txt files
+!requirements.txt
+!runtime.txt
+# Block log dumps and test output txt files
+ocr_result_dump.txt
+ocr_texts.txt
+recent_logs.txt
 data/
