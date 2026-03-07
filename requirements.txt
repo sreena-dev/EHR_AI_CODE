@@ -1,66 +1,62 @@
 # AIRA Healthcare — Production Requirements (Render Free Tier)
-# Python 3.11.9 (see runtime.txt)
+# Python 3.11.9 (set via PYTHON_VERSION env var on Render)
 #
 # Strategy: Core web serving + lightweight AI deps only.
-# Heavy ML packages (PaddleOCR, PyTorch, pyannote) are installed
-# as optional extras and loaded lazily — they are NOT needed at startup.
-# The core app (auth, patient mgmt, billing, vitals, OCR via Tesseract) works without them.
+# Heavy ML packages (PaddleOCR, PyTorch, pyannote) are commented out.
+# The core app (auth, patient records, billing, vitals, OCR via Tesseract) works without them.
 
 # ── Web Framework ────────────────────────────────────────────────
-fastapi==0.128.0
-uvicorn==0.40.0
-starlette==0.50.0
-python-multipart==0.0.22
-python-dotenv==1.2.1
+fastapi>=0.110.0
+uvicorn>=0.27.0
+starlette>=0.36.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.0
 
 # ── Auth & Security ──────────────────────────────────────────────
-PyJWT==2.11.0
-bcrypt==5.0.0
-cryptography==46.0.0
+PyJWT>=2.8.0
+bcrypt>=4.1.0
+cryptography>=42.0.0
 
 # ── Database ─────────────────────────────────────────────────────
-SQLAlchemy==2.0.46
+SQLAlchemy>=2.0.0
 psycopg2-binary>=2.9.9
-alembic==1.15.0
+alembic>=1.13.0
 
-# ── Lightweight OCR (Tesseract — no GPU needed, ~50MB) ───────────
-pytesseract==0.3.13
-pillow==10.4.0
-opencv-python-headless==4.10.0.84
-pdf2image==1.17.0
-pdfplumber==0.11.4
+# ── Lightweight OCR (Tesseract — no GPU needed) ──────────────────
+pytesseract>=0.3.10
+pillow>=10.0.0
+opencv-python-headless>=4.8.0
+pdf2image>=1.17.0
+pdfplumber>=0.10.0
 
 # ── Speech (Faster-Whisper — uses ctranslate2, NOT PyTorch) ─────
-faster-whisper==1.1.1
-# ctranslate2 is a dependency of faster-whisper and will be installed automatically
+faster-whisper>=1.0.0
+# ctranslate2 is pulled automatically by faster-whisper
 
-# ── NLP (lightweight — HuggingFace Transformers without torch) ──
-huggingface_hub==1.2.0
-tokenizers==0.21.0
-langdetect==1.0.9
+# ── NLP & HuggingFace ────────────────────────────────────────────
+# Note: do NOT pin huggingface_hub here — tokenizers<1.0 constraint must be respected
+tokenizers>=0.15.0
+langdetect>=1.0.9
 
-# ── Image processing ─────────────────────────────────────────────
-numpy==1.26.4
+# ── Image / audio processing ─────────────────────────────────────
+numpy>=1.24.0
+soundfile>=0.12.0
 
 # ── Utilities ────────────────────────────────────────────────────
-httpx==0.27.0
-requests==2.32.3
-pydantic==2.7.4
-anyio==4.4.0
-tqdm==4.66.4
-python-dateutil==2.9.0.post0
-packaging==24.1
-soundfile==0.12.1
+httpx>=0.26.0
+requests>=2.31.0
+pydantic>=2.5.0
+anyio>=4.0.0
+tqdm>=4.65.0
+python-dateutil>=2.8.0
+packaging>=23.0
 
 # ── OPTIONAL HEAVY ML (comment out for Render free tier) ─────────
-# Uncomment below ONLY if running on a server with 8GB+ RAM
-# These are lazily loaded — app will work without them, just with degraded AI features
+# Uncomment ONLY if running on a server with 8GB+ RAM
 #
 # paddlepaddle==2.6.2          # PaddleOCR backend (heavy, ~500MB)
-# paddleocr==2.8.1             # Table/layout OCR (requires paddlepaddle)
-# torch==2.3.1                 # PyTorch (heavy, ~2GB — needed for NLP BERT models)
-# torchaudio==2.3.1            # Audio processing (requires torch)
-# transformers==4.41.2         # BERT/BioClinicalBERT (requires torch for inference)
-# pyannote-audio==3.3.2        # Speaker diarization (requires torch + lots of RAM)
-# pyannote-pipeline==3.0.1
-# pyannote-core==5.0.0
+# paddleocr==2.8.1             # Table/layout OCR
+# torch>=2.1.0                 # PyTorch (heavy, ~2GB)
+# torchaudio>=2.1.0
+# transformers>=4.35.0         # BERT/BioClinicalBERT
+# pyannote-audio>=3.1.0        # Speaker diarization
