@@ -98,6 +98,39 @@ export async function renderConsultation() {
       }
       .ocr-meta { font-size: 0.68rem; color: var(--gray-400); margin-top: 4px; }
 
+      /* ── Expandable OCR Cards (Prescriptions & Reports) ── */
+      .ocr-expand-item {
+        padding: 8px 14px;
+        border-bottom: 1px solid var(--gray-50);
+        font-size: 0.78rem;
+      }
+      .ocr-expand-item:last-child { border-bottom: none; }
+      .ocr-expand-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 4px;
+      }
+      /* doc-type label — inherits sidebar font, matches .patient-info-row .lbl */
+      .ocr-expand-item .doc-type {
+        font-size: 0.72rem; font-weight: 700; color: var(--gray-600);
+        text-transform: uppercase; letter-spacing: 0.05em;
+      }
+      .ocr-expand-preview {
+        font-size: 0.76rem; color: var(--gray-500); line-height: 1.45;
+        white-space: pre-wrap; word-break: break-word; margin-bottom: 4px;
+      }
+      .ocr-expand-btn {
+        display: inline-flex; align-items: center; gap: 3px;
+        background: none; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-sm); padding: 2px 9px;
+        font-size: 0.68rem; font-weight: 600; color: var(--gray-500);
+        cursor: pointer; white-space: nowrap;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .ocr-expand-btn:hover {
+        background: var(--primary-50); color: var(--primary-600);
+        border-color: var(--primary-200);
+      }
+
       .enc-history-item {
         display: flex; align-items: center; gap: 10px; padding: 8px 0;
         border-bottom: 1px solid var(--gray-50); font-size: 0.78rem;
@@ -119,6 +152,114 @@ export async function renderConsultation() {
         display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
         background: #fef2f2; color: #b91c1c; border-radius: var(--radius-sm);
         font-size: 0.68rem; font-weight: 700; margin: 2px;
+      }
+
+      /* ── SOAP Note Layout ── */
+      .soap-note-wrapper {
+        background: white; border: 1.5px solid var(--gray-100);
+        border-radius: var(--radius-xl); overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      }
+      .soap-note-header {
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-800));
+        color: white; padding: 18px 24px;
+      }
+      .soap-note-header h2 {
+        font-size: 1.1rem; font-weight: 700; margin: 0 0 12px;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .soap-patient-grid {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .soap-patient-field label {
+        font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.7);
+        text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 3px;
+      }
+      .soap-patient-field input {
+        width: 100%; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+        border-radius: var(--radius-md); padding: 7px 10px;
+        font-size: 0.88rem; color: white; font-weight: 600;
+        outline: none; box-sizing: border-box;
+      }
+      .soap-patient-field input::placeholder { color: rgba(255,255,255,0.5); }
+      .soap-patient-field input:focus { border-color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.25); }
+
+      .soap-section {
+        border-bottom: 1.5px solid var(--gray-100);
+      }
+      .soap-section:last-child { border-bottom: none; }
+      .soap-section-header {
+        display: flex; align-items: center; gap: 12px;
+        padding: 14px 20px; background: var(--gray-50);
+        cursor: pointer; user-select: none;
+        border-bottom: 1px solid var(--gray-100);
+      }
+      .soap-letter {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
+        color: white;
+      }
+      .soap-letter-s { background: #6366f1; }
+      .soap-letter-o { background: #0ea5e9; }
+      .soap-letter-a { background: #f59e0b; }
+      .soap-letter-p { background: #10b981; }
+
+      .soap-section-title {
+        flex: 1;
+      }
+      .soap-section-title strong {
+        font-size: 0.92rem; font-weight: 700; color: var(--gray-800); display: block;
+      }
+      .soap-section-title span {
+        font-size: 0.75rem; color: var(--gray-500);
+      }
+      .soap-section-body {
+        padding: 16px 20px;
+        display: grid; gap: 12px;
+      }
+      .soap-field-group label {
+        font-size: 0.75rem; font-weight: 700; color: var(--gray-600);
+        text-transform: uppercase; letter-spacing: 0.04em;
+        display: flex; align-items: center; gap: 5px; margin-bottom: 5px;
+      }
+      .soap-field-group label .material-icons-outlined {
+        font-size: 15px; color: var(--primary-500);
+      }
+      .soap-field-group textarea {
+        width: 100%; background: var(--gray-50);
+        border: 1.5px solid var(--gray-200); border-radius: var(--radius-md);
+        padding: 10px 12px; font-size: 0.85rem; line-height: 1.6;
+        color: var(--gray-800); resize: vertical; min-height: 72px;
+        font-family: inherit; box-sizing: border-box; transition: border-color 0.2s;
+      }
+      .soap-field-group textarea:focus {
+        outline: none; border-color: var(--primary-400);
+        background: white; box-shadow: 0 0 0 3px var(--primary-50);
+      }
+      .soap-subgrid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      }
+      @media (max-width: 700px) { .soap-subgrid { grid-template-columns: 1fr; } }
+
+      .soap-actions {
+        display: flex; gap: 10px; flex-wrap: wrap;
+        padding: 18px 20px; background: var(--gray-50);
+        border-top: 1.5px solid var(--gray-100);
+        justify-content: flex-end;
+      }
+
+      /* Print / export styles */
+      @media print {
+        body > *:not(#print-region) { display: none !important; }
+        #print-region {
+          display: block !important;
+          font-family: 'Times New Roman', serif;
+          font-size: 12pt; color: #000;
+          padding: 20mm;
+        }
+        #print-region .no-print { display: none !important; }
       }
     </style>
 
@@ -214,30 +355,192 @@ export async function renderConsultation() {
           </div>
         </div>
 
-        <!-- Step 3: Clinical Note -->
+        <!-- Step 3: Clinical Note (SOAP Format) -->
         <div class="card" id="step3-card" style="margin-bottom:20px; display:none;">
           <div class="card-header">
             <h3 style="font-size:1rem;">
               <span class="material-icons-outlined" style="font-size:20px; vertical-align:middle;">description</span>
-              Step 3: Review Clinical Note Draft
+              Step 3: Review Clinical Note (SOAP Format)
             </h3>
           </div>
-          <div class="card-body">
-            <div class="alert alert-info">
+          <div class="card-body" style="padding:0;">
+
+            <!-- AI draft safety notice -->
+            <div class="alert alert-info" style="margin:16px 16px 0; border-radius:var(--radius-md);">
               <span class="material-icons-outlined" style="font-size:18px">info</span>
-              <div>AI-generated draft. <strong>You must review and edit</strong> before saving to EMR.</div>
+              <div>AI-generated draft. <strong>Review and edit every section</strong> before saving to EMR.</div>
             </div>
-            <div id="note-content"></div>
-            <div class="form-group" style="margin-top:16px;">
-              <label class="form-label">Edit Note (required before verification)</label>
-              <textarea class="form-textarea" id="note-text" style="min-height:250px;"></textarea>
-            </div>
-            <div id="note-safety-flags" style="margin-top:12px;"></div>
-            <button id="verify-btn" class="btn btn-success btn-lg" style="margin-top:16px;">
-              <span class="material-icons-outlined" style="font-size:18px">verified</span>
-              <span id="verify-text">Verify & Save to EMR</span>
-              <span id="verify-spinner" class="spinner" style="display:none;"></span>
-            </button>
+
+            <!-- Safety flags (if any) -->
+            <div id="note-safety-flags" style="margin:10px 16px 0; display:flex; gap:8px; flex-wrap:wrap;"></div>
+
+            <!-- SOAP Note Form -->
+            <div class="soap-note-wrapper" style="margin:16px;">
+
+              <!-- Patient Header -->
+              <div class="soap-note-header">
+                <h2>
+                  <span class="material-icons-outlined" style="font-size:22px;">assignment_ind</span>
+                  Clinical Note
+                </h2>
+                <div class="soap-patient-grid">
+                  <div class="soap-patient-field">
+                    <label>Patient Name</label>
+                    <input type="text" id="soap-patient-name" placeholder="Full Name" />
+                  </div>
+                  <div class="soap-patient-field">
+                    <label>Date of Birth (DOB)</label>
+                    <input type="date" id="soap-dob" />
+                  </div>
+                  <div class="soap-patient-field">
+                    <label>Date of Service</label>
+                    <input type="date" id="soap-dos" value="${new Date().toISOString().slice(0, 10)}" />
+                  </div>
+                  <div class="soap-patient-field">
+                    <label>Provider / Clinician</label>
+                    <input type="text" id="soap-provider" placeholder="Dr. …" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- S: Subjective -->
+              <div class="soap-section">
+                <div class="soap-section-header">
+                  <div class="soap-letter soap-letter-s">S</div>
+                  <div class="soap-section-title">
+                    <strong>Subjective</strong>
+                    <span>Patient-reported information</span>
+                  </div>
+                </div>
+                <div class="soap-section-body">
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">chat_bubble_outline</span>Chief Complaint (CC)</label>
+                    <textarea id="soap-cc" placeholder="Primary reason for visit…"></textarea>
+                  </div>
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">timeline</span>History of Present Illness (HPI) — OLDCARTS</label>
+                    <textarea id="soap-hpi" style="min-height:120px;" placeholder="Onset, Location, Duration, Character, Aggravating/Alleviating factors, Radiation, Timing, Severity…"></textarea>
+                  </div>
+                  <div class="soap-subgrid">
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">history_edu</span>Past Medical History (PMH)</label>
+                      <textarea id="soap-pmh" placeholder="Prior diagnoses, surgeries, hospitalizations…"></textarea>
+                    </div>
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">medication</span>Current Medications</label>
+                      <textarea id="soap-meds" placeholder="Drug name, dose, frequency…"></textarea>
+                    </div>
+                  </div>
+                  <div class="soap-subgrid">
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">warning_amber</span>Allergies</label>
+                      <textarea id="soap-allergies" placeholder="Drug, food, environmental allergies and reactions…"></textarea>
+                    </div>
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">checklist</span>Review of Systems (ROS)</label>
+                      <textarea id="soap-ros" placeholder="Constitutional, cardiovascular, respiratory, GI, neurological…"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- O: Objective -->
+              <div class="soap-section">
+                <div class="soap-section-header">
+                  <div class="soap-letter soap-letter-o">O</div>
+                  <div class="soap-section-title">
+                    <strong>Objective</strong>
+                    <span>Provider-verified clinical data</span>
+                  </div>
+                </div>
+                <div class="soap-section-body">
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">monitor_heart</span>Vitals</label>
+                    <textarea id="soap-vitals" placeholder="BP: / mmHg  |  HR: bpm  |  Temp: °C  |  SpO₂: %  |  RR: /min  |  Weight: kg  |  Height: cm"></textarea>
+                  </div>
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">personal_injury</span>Physical Examination</label>
+                    <textarea id="soap-exam" style="min-height:110px;" placeholder="General appearance, HEENT, chest/lungs, cardiovascular, abdomen, extremities, neurological…"></textarea>
+                  </div>
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">science</span>Diagnostic Results (Labs / Imaging)</label>
+                    <textarea id="soap-diag" style="min-height:90px;" placeholder="Lab values, ECG findings, X-ray/CT/MRI results, pathology…"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- A: Assessment -->
+              <div class="soap-section">
+                <div class="soap-section-header">
+                  <div class="soap-letter soap-letter-a">A</div>
+                  <div class="soap-section-title">
+                    <strong>Assessment</strong>
+                    <span>Clinical analysis and diagnosis</span>
+                  </div>
+                </div>
+                <div class="soap-section-body">
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">diagnosis</span>Primary Diagnosis / Clinical Impression</label>
+                    <textarea id="soap-dx" placeholder="ICD-10 code and description, clinical reasoning…"></textarea>
+                  </div>
+                  <div class="soap-field-group">
+                    <label><span class="material-icons-outlined">alt_route</span>Differential Diagnoses</label>
+                    <textarea id="soap-ddx" placeholder="List alternative diagnoses considered with reasoning…"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- P: Plan -->
+              <div class="soap-section">
+                <div class="soap-section-header">
+                  <div class="soap-letter soap-letter-p">P</div>
+                  <div class="soap-section-title">
+                    <strong>Plan</strong>
+                    <span>Actionable management steps</span>
+                  </div>
+                </div>
+                <div class="soap-section-body">
+                  <div class="soap-subgrid">
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">biotech</span>Diagnostics Ordered</label>
+                      <textarea id="soap-plan-diag" placeholder="Labs, imaging, referrals ordered…"></textarea>
+                    </div>
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">local_pharmacy</span>Medications Prescribed</label>
+                      <textarea id="soap-plan-meds" placeholder="Drug, dose, route, frequency, duration…"></textarea>
+                    </div>
+                  </div>
+                  <div class="soap-subgrid">
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">school</span>Patient Education</label>
+                      <textarea id="soap-plan-edu" placeholder="Lifestyle modifications, disease counselling, red-flag symptoms to watch…"></textarea>
+                    </div>
+                    <div class="soap-field-group">
+                      <label><span class="material-icons-outlined">event_available</span>Follow-up</label>
+                      <textarea id="soap-plan-fu" placeholder="Return visit timeframe, conditions for early return, specialist referral…"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Row -->
+              <div class="soap-actions no-print">
+                <button id="export-email-btn" class="btn btn-secondary" title="Compose email with SOAP note">
+                  <span class="material-icons-outlined" style="font-size:18px">email</span>
+                  Export to Email
+                </button>
+                <button id="print-btn" class="btn btn-secondary" title="Print / Save as PDF">
+                  <span class="material-icons-outlined" style="font-size:18px">print</span>
+                  Print / PDF
+                </button>
+                <button id="verify-btn" class="btn btn-success btn-lg">
+                  <span class="material-icons-outlined" style="font-size:18px">verified</span>
+                  <span id="verify-text">Verify & Save to EMR</span>
+                  <span id="verify-spinner" class="spinner" style="display:none;"></span>
+                </button>
+              </div>
+
+            </div><!-- /soap-note-wrapper -->
           </div>
         </div>
 
@@ -295,15 +598,21 @@ export async function renderConsultation() {
       let allVitals = [];
       let safetyFlags = [];
 
+      const seenOCRIds = new Set();
       encounters.forEach(enc => {
         (enc.ocr_results || []).forEach(ocr => {
+          // Deduplicate: use ocr id, or fall back to a content hash (first 100 chars of text)
+          const dedupeKey = ocr.id || (ocr.normalized_text || ocr.raw_text || '').substring(0, 100);
+          if (dedupeKey && seenOCRIds.has(dedupeKey)) return;
+          if (dedupeKey) seenOCRIds.add(dedupeKey);
           allOCR.push({ ...ocr, encounter_id: enc.id, enc_type: enc.type });
           (ocr.safety_flags || []).forEach(f => { if (!safetyFlags.includes(f)) safetyFlags.push(f); });
         });
-        if (enc.vitals) {
-          allVitals.push({ ...enc.vitals, encounter_id: enc.id });
-        }
       });
+
+      // Use the top-level all_vitals list returned by the backend —
+      // this covers vitals stored in VIT-* or any other encounter type
+      allVitals = data.all_vitals || [];
 
       // ── Build sidebar HTML ──
       let html = '';
@@ -383,25 +692,29 @@ export async function renderConsultation() {
       if (allOCR.length === 0) {
         html += `<div class="sidebar-card-body empty">No prescriptions or reports uploaded</div>`;
       } else {
-        html += `<div class="sidebar-card-body">`;
-        allOCR.forEach(ocr => {
+        html += `<div class="sidebar-card-body" style="padding:0;">`;
+        allOCR.forEach((ocr, idx) => {
           const conf = ocr.confidence || 0;
           const confClass = conf >= 80 ? 'conf-high' : conf >= 50 ? 'conf-mid' : 'conf-low';
-          const displayText = ocr.normalized_text || ocr.raw_text || '(no text extracted)';
+          const preview = (ocr.normalized_text || ocr.raw_text || '(no text extracted)').slice(0, 90) + (((ocr.normalized_text || ocr.raw_text || '').length > 90) ? '…' : '');
 
           html += `
-            <div class="ocr-item">
-              <div class="ocr-item-header">
-                <span class="doc-type">${ocr.document_type || 'Document'}</span>
+            <div class="ocr-expand-item">
+              <div class="ocr-expand-header">
+                <span class="doc-type">${ocr.document_type || 'DOCUMENT'}</span>
                 <span class="conf ${confClass}">${conf.toFixed(0)}% conf</span>
               </div>
-              <div class="ocr-text-preview">${displayText}</div>
-              <div class="ocr-meta">${ocr.created_at} · ${ocr.encounter_id}${ocr.requires_review ? ' · <span style="color:#b91c1c; font-weight:700;">⚠ Review needed</span>' : ''}</div>
+              <div class="ocr-expand-preview">${preview}</div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+                <div class="ocr-meta" style="margin:0;">${ocr.created_at || '—'} · ${ocr.encounter_id || ''}${ocr.requires_review ? ' · <span style="color:#b91c1c; font-weight:700;">⚠ Review</span>' : ''}</div>
+                <button class="ocr-expand-btn" data-idx="${idx}">
+                  <span class="material-icons" style="font-size:12px; vertical-align:middle;">open_in_full</span> View
+                </button>
+              </div>
             </div>`;
         });
         html += `</div>`;
       }
-      html += `</div>`;
 
       // Encounter History Card
       html += `
@@ -432,6 +745,17 @@ export async function renderConsultation() {
 
       sidebar.innerHTML = html;
 
+      // Store OCR data for modal access
+      window._consultOCRData = allOCR;
+
+      // Wire up "View Document" buttons → open compare modal
+      sidebar.querySelectorAll('.ocr-expand-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.idx);
+          openOCRModal(idx);
+        });
+      });
+
     } catch (err) {
       sidebar.innerHTML = `
         <div class="sidebar-card">
@@ -447,6 +771,198 @@ export async function renderConsultation() {
   // Auto-load patient context if URL has patient ID
   if (urlPatient) {
     loadPatientContext(urlPatient);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * OCR COMPARE MODAL
+   * Full-screen overlay matching the nurse OCR compare overlay.
+   * ───────────────────────────────────────────────────────────── */
+  function initOCRModal() {
+    if (document.getElementById('consult-ocr-modal')) return; // already injected
+
+    const modalEl = document.createElement('div');
+    modalEl.id = 'consult-ocr-modal';
+    modalEl.style.cssText = `
+      display:none; position:fixed; inset:0; z-index:9999;
+      background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+      align-items:center; justify-content:center;
+    `;
+    modalEl.innerHTML = `
+      <div id="consult-ocr-container" style="
+        width:96vw; height:94vh; margin:auto; display:grid;
+        grid-template-columns:1fr 1fr; grid-template-rows:auto 1fr;
+        background:white; border-radius:16px;
+        box-shadow:0 25px 60px rgba(0,0,0,0.3); overflow:hidden;
+      ">
+        <!-- Header spans both columns -->
+        <div style="
+          grid-column:1/-1; display:flex; align-items:center;
+          justify-content:space-between; padding:14px 24px;
+          background:var(--gray-50); border-bottom:1px solid var(--gray-200);
+        ">
+          <h3 style="margin:0; font-size:0.9rem; display:flex; align-items:center; gap:8px;">
+            <span class="material-icons" style="font-size:20px; color:var(--primary-500);">compare</span>
+            Compare: Original Document vs Extracted Text
+          </h3>
+          <button id="consult-ocr-close" style="
+            background:none; border:none; cursor:pointer; color:var(--gray-400);
+            padding:6px; border-radius:6px; transition:all 0.15s;
+            display:flex; align-items:center;
+          " title="Close (Esc)">
+            <span class="material-icons" style="font-size:20px;">close</span>
+          </button>
+        </div>
+
+        <!-- Left: Original Document image -->
+        <div style="display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--gray-200);">
+          <div style="
+            padding:8px 16px; font-size:0.6rem; font-weight:700;
+            text-transform:uppercase; letter-spacing:0.12em; color:var(--gray-400);
+            background:var(--gray-50); border-bottom:1px solid var(--gray-100);
+            display:flex; align-items:center; gap:6px; flex-shrink:0;
+          ">
+            <span class="material-icons" style="font-size:14px;">image</span> Original Document
+          </div>
+          <div id="consult-ocr-imgwrap" style="
+            flex:1; display:flex; align-items:flex-start; justify-content:center;
+            padding:20px; overflow:auto; background:var(--gray-100);
+          ">
+            <img id="consult-ocr-img" alt="Original Document" style="
+              max-width:100%; height:auto; border-radius:8px;
+              box-shadow:0 8px 24px rgba(0,0,0,0.15); transform-origin:top center;
+              transition:transform 0.2s ease;
+            " />
+            <div id="consult-ocr-noimag" style="
+              display:none; text-align:center; color:var(--gray-400);
+              padding:40px; font-size:0.85rem;
+            ">
+              <span class="material-icons" style="font-size:48px; display:block; margin-bottom:12px; color:var(--gray-300);">image_not_supported</span>
+              No original image stored
+            </div>
+          </div>
+          <!-- Zoom bar -->
+          <div style="
+            display:flex; align-items:center; justify-content:center;
+            gap:10px; padding:8px; background:white;
+            border-top:1px solid var(--gray-100); flex-shrink:0;
+          ">
+            <button id="consult-ocr-zoomout" title="Zoom Out" style="background:none;border:none;cursor:pointer;color:var(--gray-500);padding:4px;border-radius:4px;">
+              <span class="material-icons" style="font-size:16px;">remove</span>
+            </button>
+            <span id="consult-ocr-zoomlabel" style="font-size:0.6rem;font-weight:700;color:var(--gray-400);min-width:32px;text-align:center;">100%</span>
+            <button id="consult-ocr-zoomin" title="Zoom In" style="background:none;border:none;cursor:pointer;color:var(--gray-500);padding:4px;border-radius:4px;">
+              <span class="material-icons" style="font-size:16px;">add</span>
+            </button>
+            <button id="consult-ocr-zoomfit" title="Fit" style="background:none;border:none;cursor:pointer;color:var(--gray-500);padding:4px;border-radius:4px;">
+              <span class="material-icons" style="font-size:16px;">fit_screen</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Extracted Text (read-only in doctor view) -->
+        <div style="display:flex; flex-direction:column; overflow:hidden;">
+          <div style="
+            padding:8px 16px; font-size:0.6rem; font-weight:700;
+            text-transform:uppercase; letter-spacing:0.12em; color:var(--gray-400);
+            background:var(--gray-50); border-bottom:1px solid var(--gray-100);
+            display:flex; align-items:center; gap:6px; flex-shrink:0;
+          ">
+            <span class="material-icons" style="font-size:14px;">text_snippet</span> Extracted Text
+            <span style="margin-left:auto; font-size:0.55rem; color:var(--gray-300); font-style:italic;">Editable — corrections sync back</span>
+          </div>
+          <div style="flex:1; padding:16px; overflow:auto; border-left:1px solid var(--gray-200);">
+            <textarea id="consult-ocr-editor" style="
+              width:100%; height:100%; min-height:300px; font-size:0.82rem;
+              font-family:'JetBrains Mono', 'Courier New', monospace; background:white;
+              border:1px solid var(--gray-200); border-radius:8px;
+              padding:16px; color:var(--gray-700); resize:none; line-height:1.8;
+              box-sizing:border-box;
+            " placeholder="No extracted text available."></textarea>
+          </div>
+          <div style="
+            padding:10px 16px; display:flex; justify-content:flex-end; gap:8px;
+            background:var(--gray-50); border-top:1px solid var(--gray-100); flex-shrink:0;
+          ">
+            <button id="consult-ocr-discard" class="btn btn-secondary btn-sm">Discard Changes</button>
+            <button id="consult-ocr-apply" class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:6px;">
+              <span class="material-icons" style="font-size:14px;">check</span> Apply Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalEl);
+
+    // Close handlers
+    let _originalText = '';
+    document.getElementById('consult-ocr-close').addEventListener('click', closeOCRModal);
+    modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeOCRModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeOCRModal(); });
+
+    document.getElementById('consult-ocr-discard').addEventListener('click', () => {
+      document.getElementById('consult-ocr-editor').value = _originalText;
+    });
+    document.getElementById('consult-ocr-apply').addEventListener('click', () => {
+      closeOCRModal();
+    });
+
+    // Zoom
+    let _zoom = 1;
+    const img = document.getElementById('consult-ocr-img');
+    const zoomLabel = document.getElementById('consult-ocr-zoomlabel');
+    function applyZoom() {
+      img.style.transform = `scale(${_zoom})`;
+      zoomLabel.textContent = Math.round(_zoom * 100) + '%';
+    }
+    document.getElementById('consult-ocr-zoomin').addEventListener('click', () => {
+      _zoom = Math.min(_zoom + 0.25, 4); applyZoom();
+    });
+    document.getElementById('consult-ocr-zoomout').addEventListener('click', () => {
+      _zoom = Math.max(_zoom - 0.25, 0.25); applyZoom();
+    });
+    document.getElementById('consult-ocr-zoomfit').addEventListener('click', () => {
+      _zoom = 1; applyZoom();
+    });
+
+    function closeOCRModal() {
+      modalEl.style.display = 'none';
+    }
+    window._closeOCRModal = closeOCRModal;
+  }
+
+  function openOCRModal(idx) {
+    initOCRModal();
+    const ocr = (window._consultOCRData || [])[idx];
+    if (!ocr) return;
+
+    const modal = document.getElementById('consult-ocr-modal');
+    const img = document.getElementById('consult-ocr-img');
+    const noImg = document.getElementById('consult-ocr-noimag');
+    const editor = document.getElementById('consult-ocr-editor');
+    const zoomLbl = document.getElementById('consult-ocr-zoomlabel');
+
+    // Reset zoom
+    img.style.transform = 'scale(1)';
+    zoomLbl.textContent = '100%';
+
+    // Image
+    const imageUrl = ocr.image_url || ocr.file_url || ocr.original_image_url || null;
+    if (imageUrl) {
+      img.src = imageUrl;
+      img.style.display = '';
+      noImg.style.display = 'none';
+    } else {
+      img.src = '';
+      img.style.display = 'none';
+      noImg.style.display = 'block';
+    }
+
+    // Text
+    const text = (ocr.normalized_text || ocr.raw_text || '').trim();
+    editor.value = text;
+    window._consultOCROriginalText = text;
+
+    modal.style.display = 'flex';
   }
 
   // Also load when patient ID field changes
@@ -532,7 +1048,7 @@ export async function renderConsultation() {
     }
   });
 
-  // Step 2: Generate Note
+  // Step 2: Generate Note → fill SOAP form
   document.getElementById('generate-note-btn').addEventListener('click', async () => {
     const encounterId = document.getElementById('consult-encounter').value.trim();
     const patientId = document.getElementById('consult-patient').value.trim();
@@ -546,16 +1062,99 @@ export async function renderConsultation() {
       const result = await generateNote(encounterId, patientId);
       document.getElementById('step3-card').style.display = 'block';
 
-      const noteDraft = result.note_draft || {};
-      const noteText = noteDraft.content || noteDraft.note || JSON.stringify(noteDraft, null, 2);
-      document.getElementById('note-text').value = noteText;
-
+      // ── Safety flags ──
       if (result.safety_flags && result.safety_flags.length > 0) {
-        document.getElementById('note-safety-flags').innerHTML = `
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            ${result.safety_flags.map(f => `<span class="badge badge-warning">${f}</span>`).join('')}
-          </div>`;
+        document.getElementById('note-safety-flags').innerHTML =
+          result.safety_flags.map(f =>
+            `<span class="safety-flag"><span class="material-icons" style="font-size:14px;">error</span>${f}</span>`
+          ).join('');
       }
+
+      // ── Auto-fill patient header from sidebar data ──
+      try {
+        const patData = await fetchPatientDetail(patientId);
+        const p = patData.patient || {};
+        if (p.name) document.getElementById('soap-patient-name').value = p.name;
+        if (p.dob) document.getElementById('soap-dob').value = p.dob;
+        // Pre-fill allergies in Subjective if available from patient record
+        if (p.allergies) {
+          const allergyEl = document.getElementById('soap-allergies');
+          if (!allergyEl.value) allergyEl.value = p.allergies;
+        }
+        if (p.medical_history) {
+          const pmhEl = document.getElementById('soap-pmh');
+          if (!pmhEl.value) pmhEl.value = p.medical_history;
+        }
+        // Pre-fill vitals from the most recent encounter
+        const encounters = patData.encounters || [];
+        if (encounters.length > 0) {
+          const latestVitals = encounters
+            .map(e => e.vitals).filter(Boolean)
+            .sort((a, b) => new Date(b.recorded_at || 0) - new Date(a.recorded_at || 0))[0];
+          if (latestVitals) {
+            const v = latestVitals;
+            const parts = [];
+            if (v.bp_systolic && v.bp_diastolic) parts.push(`BP: ${v.bp_systolic}/${v.bp_diastolic} mmHg`);
+            if (v.pulse) parts.push(`HR: ${v.pulse} bpm`);
+            if (v.temperature) parts.push(`Temp: ${v.temperature}°C`);
+            if (v.spo2) parts.push(`SpO₂: ${v.spo2}%`);
+            if (v.resp_rate) parts.push(`RR: ${v.resp_rate}/min`);
+            if (v.weight) parts.push(`Weight: ${v.weight} kg`);
+            if (v.height) parts.push(`Height: ${v.height} cm`);
+            const vitalsEl = document.getElementById('soap-vitals');
+            if (!vitalsEl.value && parts.length) vitalsEl.value = parts.join('  |  ');
+          }
+        }
+      } catch (_) { /* sidebar context enrichment is best-effort */ }
+
+      // ── Also fill provider name from logged-in user ──
+      if (user && user.name) {
+        const prvEl = document.getElementById('soap-provider');
+        if (!prvEl.value) prvEl.value = user.name;
+      }
+
+      // ── Parse AI note draft into SOAP sections (best-effort) ──
+      const noteDraft = result.note_draft || {};
+      const rawText = noteDraft.content || noteDraft.note || '';
+
+      // If the backend already returns structured fields, use them directly
+      if (noteDraft.subjective || noteDraft.objective || noteDraft.assessment || noteDraft.plan) {
+        const s = noteDraft.subjective || {};
+        const o = noteDraft.objective || {};
+        const a = noteDraft.assessment || {};
+        const pl = noteDraft.plan || {};
+
+        setIfEmpty('soap-cc', s.chief_complaint || s.cc || '');
+        setIfEmpty('soap-hpi', s.hpi || '');
+        setIfEmpty('soap-pmh', s.pmh || s.past_medical_history || '');
+        setIfEmpty('soap-meds', s.medications || s.meds || '');
+        setIfEmpty('soap-allergies', s.allergies || '');
+        setIfEmpty('soap-ros', s.ros || s.review_of_systems || '');
+
+        setIfEmpty('soap-vitals', o.vitals || '');
+        setIfEmpty('soap-exam', o.physical_exam || o.exam || '');
+        setIfEmpty('soap-diag', o.diagnostics || o.labs || '');
+
+        setIfEmpty('soap-dx', a.diagnosis || a.assessment || '');
+        setIfEmpty('soap-ddx', a.differential || a.differentials || '');
+
+        setIfEmpty('soap-plan-diag', pl.diagnostics || pl.tests || '');
+        setIfEmpty('soap-plan-meds', pl.medications || pl.meds || '');
+        setIfEmpty('soap-plan-edu', pl.education || pl.patient_education || '');
+        setIfEmpty('soap-plan-fu', pl.follow_up || pl.followup || '');
+      } else if (rawText) {
+        // Fallback: smart-parse the raw text into sections by label
+        parseSoapText(rawText);
+      }
+
+      // ── Always seed HPI with the transcript so the full conversation is visible ──
+      const transcriptText = (document.getElementById('transcript-text')?.value || '').trim();
+      if (transcriptText) {
+        setIfEmpty('soap-hpi', transcriptText);
+      }
+
+      // Scroll to step 3
+      document.getElementById('step3-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       document.getElementById('step2-indicator').classList.remove('active');
       document.getElementById('step2-indicator').classList.add('done');
@@ -571,20 +1170,162 @@ export async function renderConsultation() {
     }
   });
 
+  /* ── helpers ── */
+  function setIfEmpty(id, val) {
+    const el = document.getElementById(id);
+    if (el && !el.value && val) el.value = val.trim();
+  }
+
+  /**
+   * Best-effort parser: splits a free-text SOAP note into section fields.
+   * Looks for section headings like "Subjective:", "S:", "Chief Complaint:", etc.
+   */
+  function parseSoapText(text) {
+    // Section splitter – keyed by regex matched against the start of a line
+    const SECTION_MAP = [
+      // Chief Complaint
+      { ids: ['soap-cc'], re: /^(?:chief\s*complaint|CC)\s*[:\-]/im },
+      // HPI
+      { ids: ['soap-hpi'], re: /^(?:history\s+of\s+present\s+illness|HPI)\s*[:\-]/im },
+      // PMH
+      { ids: ['soap-pmh'], re: /^(?:past\s+medical\s+history|PMH|medical\s+history)\s*[:\-]/im },
+      // Meds
+      { ids: ['soap-meds'], re: /^(?:medications?|current\s+medications?)\s*[:\-]/im },
+      // Allergies
+      { ids: ['soap-allergies'], re: /^(?:allergies?)\s*[:\-]/im },
+      // ROS
+      { ids: ['soap-ros'], re: /^(?:review\s+of\s+systems?|ROS)\s*[:\-]/im },
+      // Vitals
+      { ids: ['soap-vitals'], re: /^(?:vitals?|vital\s+signs?)\s*[:\-]/im },
+      // Exam
+      { ids: ['soap-exam'], re: /^(?:physical\s+exam(?:ination)?|exam|PE)\s*[:\-]/im },
+      // Diagnostics (objective)
+      { ids: ['soap-diag'], re: /^(?:diagnostic(?:s)?\s+results?|labs?|imaging)\s*[:\-]/im },
+      // Diagnosis
+      { ids: ['soap-dx'], re: /^(?:(?:primary\s+)?diagnosis|assessment|impression|DX)\s*[:\-]/im },
+      // Differentials
+      { ids: ['soap-ddx'], re: /^(?:differential(?:\s+diagnos[ei]s)?|DDX)\s*[:\-]/im },
+      // Plan: diagnostics
+      { ids: ['soap-plan-diag'], re: /^(?:diagnostics?\s+ordered|tests?\s+ordered|ordered?)\s*[:\-]/im },
+      // Plan: meds prescribed
+      { ids: ['soap-plan-meds'], re: /^(?:medications?\s+prescribed|prescriptions?|Rx)\s*[:\-]/im },
+      // Patient education
+      { ids: ['soap-plan-edu'], re: /^(?:patient\s+education|education|counsell?ing)\s*[:\-]/im },
+      // Follow-up
+      { ids: ['soap-plan-fu'], re: /^(?:follow[\s\-]?up|return|referral)\s*[:\-]/im },
+    ];
+
+    // Try big-section splitting first (S / O / A / P blocks)
+    const bigSections = {
+      S: extractBlock(text, /^(?:Subjective|S)\s*[:\-]/im, /^(?:Objective|O)\s*[:\-]/im),
+      O: extractBlock(text, /^(?:Objective|O)\s*[:\-]/im, /^(?:Assessment|A)\s*[:\-]/im),
+      A: extractBlock(text, /^(?:Assessment|A)\s*[:\-]/im, /^(?:Plan|P)\s*[:\-]/im),
+      P: extractBlock(text, /^(?:Plan|P)\s*[:\-]/im, null),
+    };
+
+    // If we found at least one big section, distribute further
+    if (bigSections.S || bigSections.O || bigSections.A || bigSections.P) {
+      setIfEmpty('soap-cc', extractLabel(bigSections.S, /^(?:CC|chief\s*complaint)\s*[:\-]/im) || bigSections.S || '');
+      setIfEmpty('soap-hpi', extractLabel(bigSections.S, /^(?:HPI|history\s+of\s+present\s+illness)\s*[:\-]/im) || '');
+      setIfEmpty('soap-pmh', extractLabel(bigSections.S, /^(?:PMH|past\s+medical\s+history)\s*[:\-]/im) || '');
+      setIfEmpty('soap-meds', extractLabel(bigSections.S, /^(?:medications?)\s*[:\-]/im) || '');
+      setIfEmpty('soap-allergies', extractLabel(bigSections.S, /^allergies?\s*[:\-]/im) || '');
+      setIfEmpty('soap-ros', extractLabel(bigSections.S, /^(?:ROS|review\s+of\s+systems?)\s*[:\-]/im) || '');
+
+      setIfEmpty('soap-vitals', extractLabel(bigSections.O, /^vitals?\s*[:\-]/im) || '');
+      setIfEmpty('soap-exam', extractLabel(bigSections.O, /^(?:physical\s+exam(?:ination)?|PE)\s*[:\-]/im) || bigSections.O || '');
+      setIfEmpty('soap-diag', extractLabel(bigSections.O, /^(?:labs?|diagnostics?|imaging)\s*[:\-]/im) || '');
+
+      setIfEmpty('soap-dx', extractLabel(bigSections.A, /^(?:diagnosis|impression|DX)\s*[:\-]/im) || bigSections.A || '');
+      setIfEmpty('soap-ddx', extractLabel(bigSections.A, /^(?:differential|DDX)\s*[:\-]/im) || '');
+
+      setIfEmpty('soap-plan-meds', extractLabel(bigSections.P, /^(?:medications?|Rx)\s*[:\-]/im) || '');
+      setIfEmpty('soap-plan-diag', extractLabel(bigSections.P, /^(?:diagnostics?|tests?)\s*[:\-]/im) || '');
+      setIfEmpty('soap-plan-edu', extractLabel(bigSections.P, /^(?:education|counsell?ing)\s*[:\-]/im) || '');
+      setIfEmpty('soap-plan-fu', extractLabel(bigSections.P, /^follow[\s\-]?up\s*[:\-]/im) || '');
+
+      // Anything under Plan not matched yet → plan-meds as fallback
+      if (!document.getElementById('soap-plan-meds').value && bigSections.P) {
+        setIfEmpty('soap-plan-meds', bigSections.P);
+      }
+    } else {
+      // Flat text: try each individual label
+      SECTION_MAP.forEach(({ ids, re }) => {
+        const val = extractLabel(text, re);
+        if (val) ids.forEach(id => setIfEmpty(id, val));
+      });
+      // If nothing matched, dump everything into HPI as a safe fallback
+      const anyFilled = SECTION_MAP.some(({ ids }) => ids.some(id => document.getElementById(id)?.value));
+      if (!anyFilled) setIfEmpty('soap-hpi', text.trim());
+    }
+  }
+
+  /** Extract text between startRe and endRe (or end of string) */
+  function extractBlock(text, startRe, endRe) {
+    const startMatch = startRe.exec(text);
+    if (!startMatch) return '';
+    const start = startMatch.index + startMatch[0].length;
+    if (endRe) {
+      const endMatch = endRe.exec(text.slice(start));
+      if (endMatch) return text.slice(start, start + endMatch.index).trim();
+    }
+    return text.slice(start).trim();
+  }
+
+  /** Extract the paragraph following a label within a block of text */
+  function extractLabel(text, labelRe) {
+    if (!text) return '';
+    const lines = text.split('\n');
+    let capturing = false;
+    const out = [];
+    for (const line of lines) {
+      if (labelRe.test(line)) {
+        capturing = true;
+        // Inline content on same line after the colon
+        const inline = line.replace(labelRe, '').trim().replace(/^[:\-]\s*/, '');
+        if (inline) out.push(inline);
+        continue;
+      }
+      if (capturing) {
+        // Stop at next heading-like line
+        if (/^[A-Z][a-zA-Z\s]{1,40}[:\-]/.test(line) && line.trim().length < 60) break;
+        out.push(line);
+      }
+    }
+    return out.join('\n').trim();
+  }
+
+  // Export to Email
+  document.getElementById('export-email-btn').addEventListener('click', () => {
+    const noteText = buildSoapNoteText();
+    const subject = encodeURIComponent('Clinical Note – ' + (document.getElementById('soap-patient-name').value || 'Patient'));
+    const body = encodeURIComponent(noteText);
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+  });
+
+  // Print / PDF
+  document.getElementById('print-btn').addEventListener('click', () => {
+    window.print();
+  });
+
   // Step 3: Verify & Save
   document.getElementById('verify-btn').addEventListener('click', async () => {
     const encounterId = document.getElementById('consult-encounter').value.trim();
     const patientId = document.getElementById('consult-patient').value.trim();
-    const verifiedNoteText = document.getElementById('note-text').value.trim();
 
-    if (!verifiedNoteText) {
-      showToast('Note cannot be empty', 'warning');
+    // Validate required SOAP fields
+    const cc = document.getElementById('soap-cc').value.trim();
+    const dx = document.getElementById('soap-dx').value.trim();
+    if (!cc || !dx) {
+      showToast('Please fill in at least Chief Complaint and Diagnosis before saving.', 'warning');
       return;
     }
 
     if (!confirm('Are you sure you want to verify and save this clinical note to EMR? This action cannot be undone.')) {
       return;
     }
+
+    const verifiedNoteText = buildSoapNoteText();
 
     const btn = document.getElementById('verify-btn');
     btn.disabled = true;
@@ -610,4 +1351,75 @@ export async function renderConsultation() {
       document.getElementById('verify-spinner').style.display = 'none';
     }
   });
+
+  /**
+   * Serialise all SOAP fields into a structured plain-text clinical note.
+   * This is the canonical format that gets saved to EMR or exported.
+   */
+  function buildSoapNoteText() {
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    return [
+      `CLINICAL NOTE`,
+      `${'─'.repeat(60)}`,
+      `Patient Name  : ${g('soap-patient-name') || '________________________'}`,
+      `DOB           : ${g('soap-dob') || '__________'}`,
+      `Date of Service: ${g('soap-dos') || today}`,
+      `Provider      : ${g('soap-provider') || '________________________'}`,
+      `${'─'.repeat(60)}`,
+      ``,
+      `1. SUBJECTIVE (S)`,
+      `   Chief Complaint (CC):`,
+      `   ${g('soap-cc') || '—'}`,
+      ``,
+      `   History of Present Illness (HPI) – OLDCARTS:`,
+      `   ${g('soap-hpi') || '—'}`,
+      ``,
+      `   Past Medical History (PMH):`,
+      `   ${g('soap-pmh') || '—'}`,
+      ``,
+      `   Current Medications:`,
+      `   ${g('soap-meds') || '—'}`,
+      ``,
+      `   Allergies:`,
+      `   ${g('soap-allergies') || '—'}`,
+      ``,
+      `   Review of Systems (ROS):`,
+      `   ${g('soap-ros') || '—'}`,
+      ``,
+      `2. OBJECTIVE (O)`,
+      `   Vitals:`,
+      `   ${g('soap-vitals') || '—'}`,
+      ``,
+      `   Physical Examination:`,
+      `   ${g('soap-exam') || '—'}`,
+      ``,
+      `   Diagnostic Results (Labs / Imaging):`,
+      `   ${g('soap-diag') || '—'}`,
+      ``,
+      `3. ASSESSMENT (A)`,
+      `   Primary Diagnosis / Clinical Impression:`,
+      `   ${g('soap-dx') || '—'}`,
+      ``,
+      `   Differential Diagnoses:`,
+      `   ${g('soap-ddx') || '—'}`,
+      ``,
+      `4. PLAN (P)`,
+      `   Diagnostics Ordered:`,
+      `   ${g('soap-plan-diag') || '—'}`,
+      ``,
+      `   Medications Prescribed:`,
+      `   ${g('soap-plan-meds') || '—'}`,
+      ``,
+      `   Patient Education:`,
+      `   ${g('soap-plan-edu') || '—'}`,
+      ``,
+      `   Follow-up:`,
+      `   ${g('soap-plan-fu') || '—'}`,
+      ``,
+      `${'─'.repeat(60)}`,
+      `Electronically signed by: ${g('soap-provider') || '—'}  |  ${g('soap-dos') || today}`,
+    ].join('\n');
+  }
 }
