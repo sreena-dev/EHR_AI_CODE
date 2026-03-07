@@ -143,3 +143,36 @@ export async function createEncounter(data) {
 
     return res.json();
 }
+
+/**
+ * Save vital measurements to the database
+ * @param {{
+ *   encounter_id: string,
+ *   patient_id: string,
+ *   recorded_by?: string,
+ *   temperature?: number,
+ *   pulse?: number,
+ *   bp_systolic?: number,
+ *   bp_diastolic?: number,
+ *   resp_rate?: number,
+ *   spo2?: number,
+ *   weight?: number,
+ *   height?: number,
+ *   notes?: string
+ * }} data
+ * @returns {Promise<{message: string, vitals_id: number}>}
+ */
+export async function saveVitals(data) {
+    const res = await authFetch('/api/nurse/vitals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to save vitals');
+    }
+
+    return res.json();
+}
