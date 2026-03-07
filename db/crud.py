@@ -527,3 +527,35 @@ def get_next_patient_id(db: Session) -> str:
     except (ValueError, IndexError):
         return f"PID-{10001 + db.query(Patient).count()}"
 
+
+# ═══════════════════════════════════════════
+# VITALS CRUD
+# ═══════════════════════════════════════════
+
+def create_vitals(db: Session, **kwargs) -> Vitals:
+    """
+    Create a new Vitals record.
+    Accepts all Vitals model fields as keyword arguments:
+    encounter_id, patient_id, temperature, pulse, bp_systolic, bp_diastolic,
+    resp_rate, spo2, weight, height, notes, recorded_by.
+    """
+    vitals = Vitals(**kwargs)
+    db.add(vitals)
+    db.commit()
+    db.refresh(vitals)
+    return vitals
+
+
+def get_vitals(db: Session, encounter_id: str) -> Optional[Vitals]:
+    """Get vitals for a specific encounter."""
+    return db.query(Vitals).filter(Vitals.encounter_id == encounter_id).first()
+
+
+def get_patient_vitals(db: Session, patient_id: str) -> list[Vitals]:
+    """Get all vitals for a patient across all their encounters, most recent first."""
+    return (
+        db.query(Vitals)
+        .filter(Vitals.patient_id == patient_id)
+        .order_by(Vitals.recorded_at.desc())
+        .all()
+    )
