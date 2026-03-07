@@ -322,6 +322,108 @@ async def register_patient_endpoint(body: dict, db: Session = Depends(get_db)):
 
 
 @router.post(
+    "/vitals",
+    summary="Save Vitals to Database",
+    description="Persist nurse-recorded vital signs for a patient encounter into the database.",
+    dependencies=[Depends(verify_staff_role(["nurse", "admin"]))],
+)
+async def save_vitals_endpoint(body: dict, db: Session = Depends(get_db)):
+    """
+    Receives a vitals payload from the nurse vitals-entry page and writes
+    all measurements to the Vitals table, linked to the VIT-* encounter and patient.
+
+    Expected body keys (all optional except encounter_id + patient_id):
+        encounter_id, patient_id,
+        temperature (°C → stored as °F if needed, here we store as-is),
+        pulse, bp_systolic, bp_diastolic, resp_rate, spo2, weight, height, notes
+    """
+    encounter_id = body.get("encounter_id", "").strip()
+    patient_id   = body.get("patient_id", "").strip()
+    recorded_by  = body.get("recorded_by", "").strip() or None
+
+    if not encounter_id or not patient_id:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "encounter_id and patient_id are required"}
+        )
+
+    # Ensure the encounter exists (auto-create if the frontend hasn't yet)
+    enc = crud.get_encounter(db, encounter_id)
+    if not enc:
+        crud.create_encounter(
+            db,
+            id=encounter_id,
+            patient_id=patient_id,
+            type="Vitals Entry",
+            status="Completed",
+        )
+
+    # If a Vitals row already exists for this encounter, update it (idempotent)
+    from db.models import Vitals as VitalsModel
+    existing_vitals = db.query(VitalsModel).filter(
+        VitalsModel.encounter_id == encounter_id
+    ).first()
+
+    def _maybe_float(key):
+        v = body.get(key)
+        try: return float(v) if v not in (None, "", "null") else None
+        except (TypeError, ValueError): return None
+
+    def _maybe_int(key):
+        v = body.get(key)
+        try: return int(float(v)) if v not in (None, "", "null") else None
+        except (TypeError, ValueError): return None
+
+    if existing_vitals:
+        # Merge new readings into the existing row (don't overwrite with None)
+        if _maybe_float("temperature") is not None:
+            existing_vitals.temperature  = _maybe_float("temperature")
+        if _maybe_int("pulse") is not None:
+            existing_vitals.pulse        = _maybe_int("pulse")
+        if _maybe_int("bp_systolic") is not None:
+            existing_vitals.bp_systolic  = _maybe_int("bp_systolic")
+        if _maybe_int("bp_diastolic") is not None:
+            existing_vitals.bp_diastolic = _maybe_int("bp_diastolic")
+        if _maybe_int("resp_rate") is not None:
+            existing_vitals.resp_rate    = _maybe_int("resp_rate")
+        if _maybe_float("spo2") is not None:
+            existing_vitals.spo2         = _maybe_float("spo2")
+        if _maybe_float("weight") is not None:
+            existing_vitals.weight       = _maybe_float("weight")
+        if _maybe_float("height") is not None:
+            existing_vitals.height       = _maybe_float("height")
+        if body.get("notes"):
+            existing_vitals.notes = body["notes"]
+        db.commit()
+        db.refresh(existing_vitals)
+        vitals_row = existing_vitals
+    else:
+        vitals_row = crud.create_vitals(
+            db,
+            encounter_id  = encounter_id,
+            patient_id    = patient_id,
+            temperature   = _maybe_float("temperature"),
+            pulse         = _maybe_int("pulse"),
+            bp_systolic   = _maybe_int("bp_systolic"),
+            bp_diastolic  = _maybe_int("bp_diastolic"),
+            resp_rate     = _maybe_int("resp_rate"),
+            spo2          = _maybe_float("spo2"),
+            weight        = _maybe_float("weight"),
+            height        = _maybe_float("height"),
+            notes         = body.get("notes") or None,
+            recorded_by   = recorded_by,
+        )
+
+    return {
+        "message": "Vitals saved successfully",
+        "encounter_id": encounter_id,
+        "patient_id": patient_id,
+        "vitals_id": vitals_row.id,
+    }
+
+
+
+@router.post(
     "/ocr",
     response_model=OCRResultResponse,
     responses={

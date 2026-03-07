@@ -115,6 +115,46 @@ async def get_patient_detail(patient_id: str):
             Encounter.patient_id == patient_id
         ).order_by(Encounter.created_at.desc()).all()
 
+        # ── Collect ALL vitals for this patient ──
+        # First try direct patient_id lookup (works for newly-saved vitals),
+        # then fall back to encounter_id join for older records missing patient_id.
+        from db.models import Vitals as VitalsModel
+        from sqlalchemy import or_
+        all_encounter_ids = [enc.id for enc in encounters]
+
+        all_vitals_rows = (
+            db.query(VitalsModel)
+            .filter(
+                or_(
+                    VitalsModel.patient_id == patient_id,
+                    *(
+                        [VitalsModel.encounter_id.in_(all_encounter_ids)]
+                        if all_encounter_ids else []
+                    ),
+                )
+            )
+            .order_by(VitalsModel.recorded_at.desc())
+            .all()
+        )
+
+        def _vitals_to_dict(v):
+            return {
+                "temperature":  v.temperature,
+                "pulse":        v.pulse,
+                "bp_systolic":  v.bp_systolic,
+                "bp_diastolic": v.bp_diastolic,
+                "resp_rate":    v.resp_rate,
+                "spo2":         v.spo2,
+                "weight":       v.weight,
+                "height":       v.height,
+                "notes":        v.notes,
+                "encounter_id": v.encounter_id,
+                "recorded_at":  v.recorded_at.strftime("%Y-%m-%d %I:%M %p") if v.recorded_at else "—",
+            }
+
+        all_vitals_list  = [_vitals_to_dict(v) for v in all_vitals_rows]
+        vitals_by_enc    = {v["encounter_id"]: v for v in all_vitals_list}
+
         for enc in encounters:
             # OCR results for this encounter
             ocr_results = crud.get_ocr_results_for_encounter(db, enc.id)
@@ -133,22 +173,8 @@ async def get_patient_detail(patient_id: str):
                     "created_at": ocr.created_at.strftime("%Y-%m-%d %I:%M %p") if ocr.created_at else "—",
                 })
 
-            # Vitals for this encounter
-            vitals = crud.get_vitals(db, enc.id)
-            vitals_data = None
-            if vitals:
-                vitals_data = {
-                    "temperature": vitals.temperature,
-                    "pulse": vitals.pulse,
-                    "bp_systolic": vitals.bp_systolic,
-                    "bp_diastolic": vitals.bp_diastolic,
-                    "resp_rate": vitals.resp_rate,
-                    "spo2": vitals.spo2,
-                    "weight": vitals.weight,
-                    "height": vitals.height,
-                    "notes": vitals.notes,
-                    "recorded_at": vitals.recorded_at.strftime("%Y-%m-%d %I:%M %p") if vitals.recorded_at else "—",
-                }
+            # Vitals: use pre-fetched lookup (covers VIT-*, ENC-*, any encounter type)
+            vitals_data = vitals_by_enc.get(enc.id)
 
             # Clinical note
             note = crud.get_clinical_note(db, enc.id)
@@ -187,6 +213,8 @@ async def get_patient_detail(patient_id: str):
                 "allergies": patient.allergies,
             },
             "encounters": encounters_data,
+            # Top-level list so sidebar shows vitals regardless of which encounter type stored them
+            "all_vitals": all_vitals_list,
         }
     finally:
         db.close()
