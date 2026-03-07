@@ -598,6 +598,47 @@ h4 {
   font-size: 20px;
 }
 
+/* Locked (Elite-only) sidebar links */
+.sidebar-link--locked {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.sidebar-link--locked:hover {
+  opacity: 0.8;
+  background: rgba(167, 139, 250, 0.08);
+}
+
+.sidebar-lock-icon {
+  font-size: 14px;
+  margin-left: auto;
+  color: #a78bfa;
+  opacity: 0.6;
+}
+
+/* Paywall modal animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .sidebar-footer {
   padding: var(--space-md) var(--space-lg);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -831,6 +872,20 @@ h4 {
 
 .data-table tr:hover td {
   background: var(--gray-50);
+}
+
+/* Scrollable table variant — use class="table-wrapper table-scroll" */
+.table-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.table-scroll .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200);
 }
 
 /* === Upload Area === */
