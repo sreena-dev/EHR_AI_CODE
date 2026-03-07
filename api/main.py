@@ -10,7 +10,15 @@ from .routes.admin import router as admin_router
 from .routes.patient_auth import router as patient_auth_router
 from core.workflow import WorkflowError
 import logging
+import os
 from datetime import datetime, timezone
+
+# ── CORS origins from env var ────────────────────────────────────────
+# Local dev defaults; in production set ALLOWED_ORIGINS env var on Render
+# e.g. "https://aira-healthcare.vercel.app,https://your-custom-domain.com"
+_DEFAULT_ORIGINS = "http://localhost:3000,http://localhost:5173"
+_raw_origins = os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS)
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 # Configure production logging
 logging.basicConfig(
@@ -63,10 +71,10 @@ def create_app() -> FastAPI:
     # HIPAA audit middleware (MUST be first)
     app.add_middleware(HIPAASafeAuditMiddleware)
 
-    # CORS (restrict to clinic tablet IPs in production)
+    # CORS — origins from ALLOWED_ORIGINS env var (see .env.example)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:5173", "http://clinic-tablet.local"],  # LOCK DOWN IN PROD
+        allow_origins=ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

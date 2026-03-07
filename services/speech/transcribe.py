@@ -67,10 +67,13 @@ class ClinicalTranscriber:
     
     def __init__(
         self, 
-        model_size: str = "small",  # Best balance for clinic use
+        model_size: Optional[str] = None,  # Resolved from WHISPER_MODEL_SIZE env var if not set
         device: str = "cpu",
         compute_type: str = "int8"  # 8-bit quantization for low RAM
     ):
+        # Resolve model size: env var → parameter → "tiny" (fits Render free tier 512MB)
+        # Use "small" locally or on paid plans for better accuracy
+        model_size = model_size or os.environ.get("WHISPER_MODEL_SIZE", "tiny")
         if model_size not in self.MODEL_CONFIGS:
             raise ValueError(f"Invalid model size. Choose from: {list(self.MODEL_CONFIGS.keys())}")
         

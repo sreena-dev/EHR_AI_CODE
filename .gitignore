@@ -42,10 +42,12 @@ MANIFEST
 dist-ssr
 *.local
 
-# Environment Variables
+# Environment Variables (never commit real secrets)
 .env
+.env.local
 .env.test
 .env.production
+# .env.example is intentionally tracked (no real secrets - template only)
 /tests
 
 # Editor directories and files

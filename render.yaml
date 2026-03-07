@@ -1,0 +1,41 @@
+# Render Deployment Configuration for AIRA Healthcare
+# Docs: https://render.com/docs/render-yaml
+
+services:
+  - type: web
+    name: aira-healthcare-api
+    runtime: python
+    region: singapore          # Closest free region to India
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    rootDir: .                 # Backend lives in the root
+
+    healthCheckPath: /health
+
+    envVars:
+      # ── Database (Supabase PostgreSQL) ─────────
+      - key: DATABASE_URL
+        sync: false            # Set manually in Render dashboard (contains secret)
+
+      # ── Auth ───────────────────────────────────
+      - key: JWT_SECRET_KEY
+        sync: false            # Set manually in Render dashboard
+
+      # ── HuggingFace ────────────────────────────
+      - key: HF_TOKEN
+        sync: false            # Set manually in Render dashboard
+
+      # ── AI Model Config (demo-optimized) ───────
+      - key: WHISPER_MODEL_SIZE
+        value: tiny            # 75MB RAM — fits Render free tier (512MB limit)
+
+      - key: WHISPER_CACHE_DIR
+        value: /tmp/.model_cache/whisper   # Use /tmp on Render (ephemeral ok for models)
+
+      # ── App Config ─────────────────────────────
+      - key: ALLOWED_ORIGINS
+        value: ""              # Set to your Vercel URL after deploy, e.g. https://aira-healthcare.vercel.app
+
+      - key: PYTHONUNBUFFERED
+        value: "1"             # Ensure logs appear in real-time in Render dashboard
