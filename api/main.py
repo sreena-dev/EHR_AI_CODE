@@ -20,14 +20,18 @@ _DEFAULT_ORIGINS = "http://localhost:3000,http://localhost:5173"
 _raw_origins = os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS)
 ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
-# Configure production logging
+# Configure logging — stdout on cloud (Render captures it), file locally if logs/ exists
+_log_handlers: list[logging.Handler] = [logging.StreamHandler()]
+try:
+    os.makedirs("logs", exist_ok=True)
+    _log_handlers.append(logging.FileHandler("logs/api.log"))
+except OSError:
+    pass  # Render / read-only FS — stdout logging only (Render captures all output)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler("logs/api.log"),
-        logging.StreamHandler()  # Also log to console for Docker
-    ]
+    handlers=_log_handlers
 )
 
 logger = logging.getLogger(__name__)
