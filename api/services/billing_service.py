@@ -1,129 +1,223 @@
 """
 Billing Service
 ===============
-Mock implementation of a payment gateway integration (like Stripe or Razorpay)
-to handle SaaS subscriptions for clinics. Real implementation would use 
-the official provider SDKs.
+Supports BOTH mock mode (default) and real Razorpay integration.
+Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env to enable live payments.
+When env vars are absent, falls back to a simulated mock gateway.
+
+MEDICAL SAFETY NOTE:
+- Payment data is NEVER stored in the EHR database.
+- Only subscription status and invoice metadata are recorded.
+- All payment card details are handled exclusively by Razorpay (PCI-DSS compliant).
 """
 
+import os
 import uuid
+import hmac
+import hashlib
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any
-
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)
 
+# ─── Razorpay Configuration ────────────────────────────────────
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_ENABLED = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
+
+_razorpay_client = None
+
+def _get_razorpay_client():
+    """Lazy-load Razorpay SDK client."""
+    global _razorpay_client
+    if _razorpay_client is None and RAZORPAY_ENABLED:
+        try:
+            import razorpay
+            _razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+            logger.info(f"Razorpay client initialized (key: {RAZORPAY_KEY_ID[:12]}...)")
+        except ImportError:
+            logger.warning("razorpay package not installed. Run: pip install razorpay")
+    return _razorpay_client
+
+
 class BillingService:
-    """Mock Billing & Subscription Provider Manager"""
+    """Payment & Subscription Provider Manager"""
 
+    # ─── Order / Checkout Session ─────────────────────────────
     @staticmethod
-    def create_checkout_session(staff_id: str, plan_id: str, success_url: str, cancel_url: str) -> Dict[str, Any]:
+    def create_checkout_session(
+        staff_id: str,
+        plan_id: str,
+        success_url: str,
+        cancel_url: str,
+        db_session=None,
+    ) -> dict[str, Any]:
         """
-        Simulate creating a Stripe/Razorpay Checkout Session.
-        In reality, this returns a secure URL where the user enters card details.
-        Here we generate a mock URL that we'll handle directly in our frontend.
+        Create a payment order.
+        - If Razorpay is configured: creates a real Razorpay Order via their API.
+        - Otherwise: returns a mock session for development.
         """
-        session_id = f"cs_test_{uuid.uuid4().hex}"
-        
-        # We will append the session ID to the success URL so frontend knows it worked
-        mock_checkout_url = f"{success_url}?session_id={session_id}&plan_id={plan_id}"
+        from db.models import SubscriptionPlan
 
-        logger.info(f"Created mock checkout session {session_id} for user {staff_id} -> {plan_id}")
+        plan = None
+        if db_session:
+            plan = db_session.query(SubscriptionPlan).filter(
+                SubscriptionPlan.id == plan_id
+            ).first()
 
-        return {
-            "id": session_id,
-            "url": mock_checkout_url,
-            "status": "open",
-            "metadata": {
-                "staff_id": staff_id,
-                "plan_id": plan_id
+        amount_paise = (plan.price_inr * 100) if plan else 1200000  # default 12000 INR
+
+        client = _get_razorpay_client()
+        if client and RAZORPAY_ENABLED:
+            # ── Real Razorpay Order ──
+            order_data = {
+                "amount": amount_paise,
+                "currency": "INR",
+                "receipt": f"rcpt_{uuid.uuid4().hex[:12]}",
+                "notes": {
+                    "staff_id": staff_id,
+                    "plan_id": plan_id,
+                },
             }
-        }
+            order = client.order.create(data=order_data)
+            logger.info(f"Created Razorpay order {order['id']} for {staff_id} -> {plan_id}")
+            return {
+                "id": order["id"],
+                "amount": order["amount"],
+                "currency": order["currency"],
+                "key_id": RAZORPAY_KEY_ID,
+                "mode": "razorpay",
+                "plan_name": plan.name if plan else plan_id,
+                "status": "created",
+                "metadata": {
+                    "staff_id": staff_id,
+                    "plan_id": plan_id,
+                },
+            }
+        else:
+            # ── Mock Mode ──
+            session_id = f"cs_test_{uuid.uuid4().hex}"
+            logger.info(f"Created mock checkout session {session_id} for user {staff_id} -> {plan_id}")
+            return {
+                "id": session_id,
+                "amount": amount_paise,
+                "currency": "INR",
+                "mode": "mock",
+                "plan_name": plan.name if plan else plan_id,
+                "status": "open",
+                "metadata": {
+                    "staff_id": staff_id,
+                    "plan_id": plan_id,
+                },
+            }
 
+    # ─── Payment Verification (Razorpay Signature) ───────────
     @staticmethod
-    def fulfill_checkout(staff_id: str, plan_id: str, db_session) -> Dict[str, Any]:
+    def verify_razorpay_payment(
+        razorpay_order_id: str,
+        razorpay_payment_id: str,
+        razorpay_signature: str,
+    ) -> bool:
+        """Verify the Razorpay payment signature using HMAC SHA256."""
+        if not RAZORPAY_KEY_SECRET:
+            return False
+        message = f"{razorpay_order_id}|{razorpay_payment_id}"
+        expected = hmac.new(
+            RAZORPAY_KEY_SECRET.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(expected, razorpay_signature)
+
+    # ─── Subscription Fulfillment ────────────────────────────
+    @staticmethod
+    def fulfill_checkout(staff_id: str, plan_id: str, db_session) -> dict[str, Any]:
         """
-        Simulate webhook fulfillment (checkout.session.completed).
-        Upgrades the user's subscription in the database.
+        Activate/upgrade the user's subscription in the database.
+        Called after successful payment (mock or Razorpay verified).
         """
         from db.models import ClinicSubscription, SubscriptionPlan, BillingInvoice
-        
-        # Verify plan exists
-        plan = db_session.query(SubscriptionPlan).filter(SubscriptionPlan.id == plan_id).first()
+
+        plan = db_session.query(SubscriptionPlan).filter(
+            SubscriptionPlan.id == plan_id
+        ).first()
         if not plan:
             raise ValueError(f"Invalid plan ID: {plan_id}")
 
         current_time = datetime.now(timezone.utc)
-        
-        # Check for existing subscription
-        sub = db_session.query(ClinicSubscription).filter(ClinicSubscription.staff_id == staff_id).first()
-        
+
+        sub = db_session.query(ClinicSubscription).filter(
+            ClinicSubscription.staff_id == staff_id
+        ).first()
+
         if sub:
             # Upgrade/renew existing
             sub.plan_id = plan_id
             sub.status = "active"
-            
-            # Extend by interval. Default 365 days for 'year'
             days_to_add = 365 if plan.interval == "year" else 30
-            # If currently active, add to current end date. Otherwise start from today.
-            if sub.current_period_end and sub.current_period_end > current_time:
-                sub.current_period_end = sub.current_period_end + timedelta(days=days_to_add)
+
+            sub_end = sub.current_period_end
+            if sub_end and sub_end.tzinfo is None:
+                sub_end = sub_end.replace(tzinfo=timezone.utc)
+            if sub_end and sub_end > current_time:
+                sub.current_period_end = sub_end + timedelta(days=days_to_add)
             else:
                 sub.current_period_end = current_time + timedelta(days=days_to_add)
-                
+
             sub.cancel_at_period_end = False
             logger.info(f"Upgraded/renewed subscription for {staff_id} to {plan_id}")
-            
         else:
             # Create new subscription
             days_to_add = 365 if plan.interval == "year" else 30
-            mock_sub_id = f"sub_{uuid.uuid4().hex[:16]}"
-            
             sub = ClinicSubscription(
                 staff_id=staff_id,
                 plan_id=plan_id,
                 status="active",
                 current_period_end=current_time + timedelta(days=days_to_add),
-                stripe_subscription_id=mock_sub_id
+                stripe_subscription_id=f"sub_{uuid.uuid4().hex[:16]}",
             )
             db_session.add(sub)
-            db_session.flush() # To get sub.id
+            db_session.flush()
             logger.info(f"Created new subscription for {staff_id} on {plan_id}")
 
-        # Generate Mock Invoice
+        # Generate Invoice
         invoice = BillingInvoice(
             id=f"in_{uuid.uuid4().hex[:16]}",
             subscription_id=sub.id,
             amount_paid=plan.price_inr,
             currency="inr",
-            status="paid"
+            status="paid",
         )
         db_session.add(invoice)
         db_session.commit()
 
         return {"success": True, "subscription_id": sub.id, "plan_id": plan.id}
-        
+
+    # ─── Subscription Status ─────────────────────────────────
     @staticmethod
-    def get_subscription_status(staff_id: str, db_session) -> Dict[str, Any]:
+    def get_subscription_status(staff_id: str, db_session) -> dict[str, Any]:
         """Get the current subscription state for a user."""
         from db.models import ClinicSubscription, SubscriptionPlan
-        
-        sub = db_session.query(ClinicSubscription).filter(ClinicSubscription.staff_id == staff_id).first()
-        
+
+        sub = db_session.query(ClinicSubscription).filter(
+            ClinicSubscription.staff_id == staff_id
+        ).first()
+
         if not sub:
             return {"has_subscription": False, "plan": None, "status": "none"}
-            
-        plan = db_session.query(SubscriptionPlan).filter(SubscriptionPlan.id == sub.plan_id).first()
-        
-        # Check if expired
+
+        plan = db_session.query(SubscriptionPlan).filter(
+            SubscriptionPlan.id == sub.plan_id
+        ).first()
+
         current_time = datetime.now(timezone.utc)
         sub_end = sub.current_period_end
         if sub_end and sub_end.tzinfo is None:
             sub_end = sub_end.replace(tzinfo=timezone.utc)
-            
+
         is_expired = sub_end < current_time if sub_end else False
-        
+
         effective_status = sub.status
         if is_expired and effective_status == "active":
             effective_status = "past_due"
@@ -137,5 +231,5 @@ class BillingService:
             "status": effective_status,
             "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
             "cancel_at_period_end": sub.cancel_at_period_end,
-            "features": plan.features if plan else {}
+            "features": plan.features if plan else {},
         }
