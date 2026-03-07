@@ -99,7 +99,7 @@ export async function renderNurseDashboard() {
         </h3>
         <span id="filter-label" class="badge badge-neutral" style="font-size:0.75rem;">All</span>
       </div>
-      <div class="table-wrapper">
+      <div class="table-wrapper table-scroll">
         <table class="data-table">
           <thead>
             <tr>
