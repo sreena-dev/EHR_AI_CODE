@@ -44,7 +44,7 @@ export async function login(staffId, password) {
 
     const data = await res.json();
 
-    if (!res.ok) {
+    if (!res.ok || !data.success) {
         throw new Error(data.detail || data.message || 'Login failed');
     }
 
